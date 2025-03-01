@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 69859d0697e98db7faf8bd857388ad5a
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 119484
+  packageName: Arcade car physics
+  packageVersion: 2.0
+  assetPath: Assets/Arcade_Car_Physics/Scripts/DemoScripts/RaceTrackCheckpointsManager.cs
+  uploadId: 477905

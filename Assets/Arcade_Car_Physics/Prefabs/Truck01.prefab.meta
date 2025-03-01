@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 7c4c92a669340bf6cb40a22ce72a1a28
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 119484
+  packageName: Arcade car physics
+  packageVersion: 2.0
+  assetPath: Assets/Arcade_Car_Physics/Prefabs/Truck01.prefab
+  uploadId: 477905

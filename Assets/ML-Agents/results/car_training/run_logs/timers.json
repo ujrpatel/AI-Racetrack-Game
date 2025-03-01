@@ -1,0 +1,68 @@
+{
+    "name": "root",
+    "metadata": {
+        "timer_format_version": "0.1.0",
+        "start_time_seconds": "1740757228",
+        "python_version": "3.9.5 (tags/v3.9.5:0a7dcbd, May  3 2021, 17:27:52) [MSC v.1928 64 bit (AMD64)]",
+        "command_line_arguments": "C:\\Users\\Uday Patel\\AppData\\Local\\Programs\\Python\\Python39\\Scripts\\mlagents-learn config/car_trainer.yaml --run-id=car_training --force --no-graphics",
+        "mlagents_version": "0.30.0",
+        "mlagents_envs_version": "0.30.0",
+        "communication_protocol_version": "1.5.0",
+        "pytorch_version": "2.6.0+cpu",
+        "numpy_version": "1.23.5",
+        "end_time_seconds": "1740757366"
+    },
+    "total": 137.71966569999998,
+    "count": 1,
+    "self": 0.0074963999999795305,
+    "children": {
+        "run_training.setup": {
+            "total": 0.09901779999999949,
+            "count": 1,
+            "self": 0.09901779999999949
+        },
+        "TrainerController.start_learning": {
+            "total": 137.6131515,
+            "count": 1,
+            "self": 0.0001656000000025415,
+            "children": {
+                "TrainerController._reset_env": {
+                    "total": 11.568076300000001,
+                    "count": 1,
+                    "self": 11.568076300000001
+                },
+                "TrainerController.advance": {
+                    "total": 125.91034560000001,
+                    "count": 1,
+                    "self": 0.000665700000013203,
+                    "children": {
+                        "env_step": {
+                            "total": 125.9096799,
+                            "count": 1,
+                            "self": 125.909675,
+                            "children": {
+                                "SubprocessEnvManager._take_step": {
+                                    "total": 4.9000000004184585e-06,
+                                    "count": 1,
+                                    "self": 4.9000000004184585e-06
+                                }
+                            }
+                        }
+                    }
+                },
+                "TrainerController._save_models": {
+                    "total": 0.13456399999998325,
+                    "count": 1,
+                    "self": 0.011560199999991028,
+                    "children": {
+                        "RLTrainer._checkpoint": {
+                            "total": 0.12300379999999222,
+                            "count": 1,
+                            "self": 0.12300379999999222
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

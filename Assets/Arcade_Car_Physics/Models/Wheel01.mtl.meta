@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 034a90532147b4e0ab61372cf259d0d6
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 119484
+  packageName: Arcade car physics
+  packageVersion: 2.0
+  assetPath: Assets/Arcade_Car_Physics/Models/Wheel01.mtl
+  uploadId: 477905

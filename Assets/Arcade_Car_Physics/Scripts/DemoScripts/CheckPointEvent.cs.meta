@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 612c939a1a1ee75019ab35b0576a8ae9
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 119484
+  packageName: Arcade car physics
+  packageVersion: 2.0
+  assetPath: Assets/Arcade_Car_Physics/Scripts/DemoScripts/CheckPointEvent.cs
+  uploadId: 477905

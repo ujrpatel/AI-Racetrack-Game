@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: e1c8e65344ff84f27aceb49dcd824f7d
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 119484
+  packageName: Arcade car physics
+  packageVersion: 2.0
+  assetPath: Assets/Arcade_Car_Physics/Models/Tank01.mtl
+  uploadId: 477905

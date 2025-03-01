@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: b63f6bc7d682b67a0b85fcae2eb42867
+AssemblyDefinitionImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 119484
+  packageName: Arcade car physics
+  packageVersion: 2.0
+  assetPath: Assets/Arcade_Car_Physics/Scripts/VehicleBehaviour.asmdef
+  uploadId: 477905

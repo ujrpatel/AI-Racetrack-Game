@@ -1,0 +1,19 @@
+fileFormatVersion: 2
+guid: 46cf26a406bad0b4280494683f9c6af6
+timeCreated: 1499186836
+licenseType: Store
+MonoImporter:
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 119484
+  packageName: Arcade car physics
+  packageVersion: 2.0
+  assetPath: Assets/Arcade_Car_Physics/Scripts/EngineSoundManager.cs
+  uploadId: 477905

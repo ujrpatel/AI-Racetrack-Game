@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 0fac9eb970e354c57a229e9573919884
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 119484
+  packageName: Arcade car physics
+  packageVersion: 2.0
+  assetPath: Assets/Arcade_Car_Physics/Models/RaceTracks/Materials/grey.mat
+  uploadId: 477905

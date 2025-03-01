@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: d336129092c294dbc9e704e522469cbe
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 119484
+  packageName: Arcade car physics
+  packageVersion: 2.0
+  assetPath: Assets/Arcade_Car_Physics/Prefabs/Car05.prefab
+  uploadId: 477905

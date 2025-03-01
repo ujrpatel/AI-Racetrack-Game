@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: d351eae634ad9ec86be908ee41863fab
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 119484
+  packageName: Arcade car physics
+  packageVersion: 2.0
+  assetPath: Assets/Arcade_Car_Physics/Models/Trailer01.mtl
+  uploadId: 477905

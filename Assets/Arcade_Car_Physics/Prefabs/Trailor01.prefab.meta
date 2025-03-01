@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 6807f53470d2464a6aaa9df2fea62327
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 119484
+  packageName: Arcade car physics
+  packageVersion: 2.0
+  assetPath: Assets/Arcade_Car_Physics/Prefabs/Trailor01.prefab
+  uploadId: 477905

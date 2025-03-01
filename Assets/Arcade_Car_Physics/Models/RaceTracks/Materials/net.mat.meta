@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 780556afed5454c5b922a4095e9bed3a
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 119484
+  packageName: Arcade car physics
+  packageVersion: 2.0
+  assetPath: Assets/Arcade_Car_Physics/Models/RaceTracks/Materials/net.mat
+  uploadId: 477905

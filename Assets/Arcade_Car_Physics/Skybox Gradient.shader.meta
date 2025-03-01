@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: c40b3327422715c5fabe345a93f9f60e
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 119484
+  packageName: Arcade car physics
+  packageVersion: 2.0
+  assetPath: Assets/Arcade_Car_Physics/Skybox Gradient.shader
+  uploadId: 477905

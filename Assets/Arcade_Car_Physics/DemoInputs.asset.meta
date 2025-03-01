@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: aa7cb0d7aa0bdc275ba25985f96c9bd5
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 119484
+  packageName: Arcade car physics
+  packageVersion: 2.0
+  assetPath: Assets/Arcade_Car_Physics/DemoInputs.asset
+  uploadId: 477905

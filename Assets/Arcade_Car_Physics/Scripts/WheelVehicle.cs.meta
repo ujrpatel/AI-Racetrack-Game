@@ -1,0 +1,19 @@
+fileFormatVersion: 2
+guid: 5c241727a8fc83048b56bdd0b450f8fa
+timeCreated: 1499186836
+licenseType: Store
+MonoImporter:
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 119484
+  packageName: Arcade car physics
+  packageVersion: 2.0
+  assetPath: Assets/Arcade_Car_Physics/Scripts/WheelVehicle.cs
+  uploadId: 477905

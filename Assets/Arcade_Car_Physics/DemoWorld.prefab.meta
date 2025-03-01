@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: b24f006dd77a94f649454da633b6e015
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 119484
+  packageName: Arcade car physics
+  packageVersion: 2.0
+  assetPath: Assets/Arcade_Car_Physics/DemoWorld.prefab
+  uploadId: 477905
