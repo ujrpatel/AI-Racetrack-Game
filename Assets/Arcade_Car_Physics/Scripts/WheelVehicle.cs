@@ -175,7 +175,7 @@ namespace VehicleBehaviour {
         } 
         
         // Use this to disable drifting
-        [HideInInspector] public bool allowDrift = true;
+        [HideInInspector] public bool allowDrift = false;
         bool drift;
         public bool Drift { get => drift;
             set => drift = value;

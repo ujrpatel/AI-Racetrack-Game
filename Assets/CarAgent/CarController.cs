@@ -45,7 +45,7 @@ public class CarController : MonoBehaviour
     public void Move(float steering, float throttle, float brake)
     {
         steeringInput = Mathf.Clamp(steering, -1f, 1f);
-        throttleInput = Mathf.Clamp(throttle, 0f, 1f);
+        throttleInput = Mathf.Clamp(throttle, 0f, 1f) * maxSpeed;
         brakeInput = Mathf.Clamp(brake, 0f, 1f);
 
         if (wheelVehicle != null)
