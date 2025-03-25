@@ -4,6 +4,7 @@ using Unity.MLAgents.Policies;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Collections;
 
 public class PPOGATrainer : MonoBehaviour
 {
@@ -27,6 +28,7 @@ public class PPOGATrainer : MonoBehaviour
     
     // Agent references
     private List<CarAgent> activeAgents = new List<CarAgent>();
+    private object agentLock = new object(); // For thread safety
     
     // Link to genetic manager
     public GeneticPPOManager geneticManager;
@@ -35,47 +37,155 @@ public class PPOGATrainer : MonoBehaviour
     private float episodeReward = 0;
     private int episodeSteps = 0;
     private int totalSteps = 0;
+    private int trainingPhase = 1; // Track current training phase
     
     // Model saving
     public string modelSavePath = "Assets/Models/";
-    public int saveModelInterval = 10; // Save every N generations
+    public int saveModelInterval = 5; // Save every N generations
+    
+    // Training phases
+    private float checkpointCompletionThreshold = 0.7f; // 70% of cars must reach checkpoints to progress
+    private float lapCompletionThreshold = 0.3f; // 30% of cars must complete laps to progress
     
     void Start()
-{
-    // Create models directory if it doesn't exist
-    if (!string.IsNullOrEmpty(modelSavePath) && !Directory.Exists(modelSavePath))
     {
-        try
+        // Create models directory if it doesn't exist
+        if (!Directory.Exists(modelSavePath))
         {
             Directory.CreateDirectory(modelSavePath);
         }
-        catch (System.Exception e)
-        {
-            Debug.LogWarning($"Could not create models directory: {e.Message}");
-        }
+        
+        // Ensure ML-Agents Academy is initialized properly
+        StartCoroutine(EnsureAcademyInitialization());
     }
     
-    // Subscribe to ML-Agents events (with safety check)
-    try
+    private IEnumerator EnsureAcademyInitialization()
     {
-        if (Academy.IsInitialized)
+        // Wait a short moment for other systems to initialize
+        yield return new WaitForSeconds(0.1f);
+        
+        if (!Academy.IsInitialized)
         {
-            Academy.Instance.AgentPreStep += OnAgentPreStep;
-            Debug.Log("Registered with ML-Agents Academy");
+            Debug.LogWarning("ML-Agents Academy not initialized. This might impact training functionality.");
+            
+            // Try to force initialization by referencing the Instance
+            try 
+            {
+                var _ = Academy.Instance;
+                Debug.Log("Successfully initialized ML-Agents Academy");
+                Academy.Instance.AgentPreStep += OnAgentPreStep;
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"Failed to initialize ML-Agents Academy: {e.Message}");
+                Debug.LogWarning("Training will continue in inference mode - only model execution, no learning");
+            }
         }
         else
         {
-            Debug.LogWarning("ML-Agents Academy is not initialized, some functionality may be limited");
+            Debug.Log("ML-Agents Academy is already initialized");
+            Academy.Instance.AgentPreStep += OnAgentPreStep;
+        }
+        
+        // Continue with the rest of initialization regardless of Academy status
+        StartCoroutine(PeriodicPhaseCheck());
+        
+        // If we have a genetic manager, make sure it's properly linked
+        if (geneticManager != null)
+        {
+            geneticManager.ppoTrainer = this;
+            Debug.Log("Successfully linked GeneticPPOManager with PPOGATrainer");
+        }
+        else
+        {
+            Debug.LogError("GeneticPPOManager reference is missing. Please assign it in the inspector.");
         }
     }
-    catch (System.Exception e)
+    
+    IEnumerator PeriodicPhaseCheck()
     {
-        Debug.LogError($"Error initializing PPOGATrainer: {e.Message}");
+        // Wait for initial training to begin
+        yield return new WaitForSeconds(60f);
+        
+        while (true)
+        {
+            // Check training progression every 2 minutes
+            CheckTrainingPhase();
+            yield return new WaitForSeconds(120f);
+        }
     }
-}
+    
+    private void CheckTrainingPhase()
+    {
+        if (geneticManager == null || geneticManager.population.Count == 0) return;
+        
+        var population = geneticManager.population;
+        
+        // Check checkpoint completion rate
+        float checkpointCompletionRate = (float)population.Count(g => g.checkpointsPassed >= 5) / population.Count;
+        
+        // Check lap completion rate
+        float lapCompletionRate = (float)population.Count(g => g.lapsCompleted > 0) / population.Count;
+        
+        Debug.Log($"Training metrics - Checkpoint completion: {checkpointCompletionRate:P2}, Lap completion: {lapCompletionRate:P2}, Current phase: {trainingPhase}");
+        
+        // Phase progression logic
+        if (trainingPhase == 1 && checkpointCompletionRate >= checkpointCompletionThreshold)
+        {
+            trainingPhase = 2;
+            UpdatePhaseConfiguration();
+            Debug.Log("Training progressed to Phase 2: Speed Optimization");
+        }
+        else if (trainingPhase == 2 && lapCompletionRate >= lapCompletionThreshold)
+        {
+            trainingPhase = 3;
+            UpdatePhaseConfiguration();
+            Debug.Log("Training progressed to Phase 3: Time Optimization");
+        }
+    }
+    
+    private void UpdatePhaseConfiguration()
+    {
+        switch (trainingPhase)
+        {
+            case 1: // Navigation phase
+                trainingConfig.speedRewardFactor = 0.01f;
+                trainingConfig.checkpointReward = 1.0f;
+                trainingConfig.lapCompletionReward = 5.0f;
+                break;
+                
+            case 2: // Speed optimization
+                trainingConfig.speedRewardFactor = 0.02f;
+                trainingConfig.checkpointReward = 0.5f;
+                trainingConfig.lapCompletionReward = 3.0f;
+                break;
+                
+            case 3: // Time optimization
+                trainingConfig.speedRewardFactor = 0.03f;
+                trainingConfig.checkpointReward = 0.2f;
+                trainingConfig.lapCompletionReward = 2.0f;
+                break;
+        }
+        
+        // Apply updated configuration to all active agents
+        lock (agentLock)
+        {
+            // Create a copy of the list to avoid potential modification during iteration
+            List<CarAgent> agentsCopy = new List<CarAgent>(activeAgents);
+            
+            foreach (var agent in agentsCopy)
+            {
+                if (agent != null && agent.gameObject != null && agent.isActiveAndEnabled)
+                {
+                    ApplyTrainingConfigToAgent(agent);
+                }
+            }
+        }
+    }
     
     void OnDestroy()
     {
+        // Cleanup event subscriptions
         if (Academy.IsInitialized)
         {
             Academy.Instance.AgentPreStep -= OnAgentPreStep;
@@ -84,109 +194,228 @@ public class PPOGATrainer : MonoBehaviour
     
     public void RegisterAgent(CarAgent agent)
     {
-        if (!activeAgents.Contains(agent))
+        if (agent == null) return;
+        
+        lock (agentLock)
         {
-            activeAgents.Add(agent);
+            // Remove any null references first
+            activeAgents.RemoveAll(a => a == null);
             
-            // Apply current training configuration to agent
-            ApplyTrainingConfigToAgent(agent);
+            if (!activeAgents.Contains(agent))
+            {
+                activeAgents.Add(agent);
+                
+                // Apply current training configuration to agent
+                ApplyTrainingConfigToAgent(agent);
+                
+                Debug.Log($"Registered agent {agent.name} with trainer");
+            }
         }
     }
     
     public void UnregisterAgent(CarAgent agent)
     {
-        if (activeAgents.Contains(agent))
+        if (agent == null) return;
+        
+        lock (agentLock)
         {
-            activeAgents.Remove(agent);
+            if (activeAgents.Contains(agent))
+            {
+                activeAgents.Remove(agent);
+                Debug.Log($"Unregistered agent {agent.name} from trainer");
+            }
+            
+            // Also clean up any null references
+            activeAgents.RemoveAll(a => a == null);
         }
     }
     
     void OnAgentPreStep(int stepCount)
     {
-        // Update tracking metrics
-        totalSteps++;
-        episodeSteps++;
+        // Update tracking metrics in a thread-safe way
+        lock (agentLock)
+        {
+            totalSteps++;
+            episodeSteps++;
+        }
     }
     
     public void ApplyTrainingConfigToAgent(CarAgent agent)
     {
         if (agent == null) return;
         
-        // Set reward function parameters
-        agent.UpdateRewardParameters(
-            trainingConfig.speedRewardFactor,
-            trainingConfig.checkpointReward,
-            trainingConfig.lapCompletionReward,
-            trainingConfig.collisionPenalty
-        );
-        
-        // Apply PPO parameters - this is a placeholder since we can't directly access the
-        // ML-Agents internal PPO implementation in code
-        // The actual parameter adjustment would happen via ML-Agents config
-        BehaviorParameters behaviorParams = agent.GetComponent<BehaviorParameters>();
-        if (behaviorParams != null)
+        try
         {
-            // Log that we're applying parameters
-            Debug.Log($"Applied PPO params to agent: LR={trainingConfig.ppoParams.learningRate}, Gamma={trainingConfig.ppoParams.gamma}");
+            // Ensure the agent is still valid before applying config
+            if (agent.gameObject != null && agent.isActiveAndEnabled)
+            {
+                // Set reward function parameters based on training phase
+                agent.UpdateRewardParameters(
+                    trainingConfig.speedRewardFactor,
+                    trainingConfig.checkpointReward,
+                    trainingConfig.lapCompletionReward,
+                    trainingConfig.collisionPenalty
+                );
+                
+                // Apply exploration settings based on phase
+                switch (trainingPhase)
+                {
+                    case 1:
+                        agent.forceExploration = Random.value < 0.3f; // 30% exploration in phase 1
+                        break;
+                    case 2:
+                        agent.forceExploration = Random.value < 0.15f; // 15% exploration in phase 2
+                        break;
+                    case 3:
+                        agent.forceExploration = Random.value < 0.05f; // 5% exploration in phase 3
+                        break;
+                }
+                
+                // Debug log on configuration
+                BehaviorParameters behaviorParams = agent.GetComponent<BehaviorParameters>();
+                if (behaviorParams != null && trainingConfig.ppoParams != null)
+                {
+                    if (agent.enableDebugLogging)
+                    {
+                        Debug.Log($"Applied PPO params to agent {agent.name}: " +
+                             $"LR={trainingConfig.ppoParams.learningRate}, " +
+                             $"Gamma={trainingConfig.ppoParams.gamma}, " +
+                             $"Phase={trainingPhase}");
+                    }
+                }
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Error applying training config to agent: {e.Message}");
+            
+            // Remove this agent if it's causing errors
+            lock (agentLock)
+            {
+                activeAgents.Remove(agent);
+            }
         }
     }
     
     public void OnEpisodeEnd(CarAgent agent, float accumulatedReward)
     {
+        if (agent == null) return;
+        
         // Update metrics
-        episodeReward = accumulatedReward;
-        
-        // Log performance
-        Debug.Log($"Episode ended. Steps: {episodeSteps}, Reward: {episodeReward}");
-        
-        // Reset counters
-        episodeSteps = 0;
+        lock (agentLock)
+        {
+            episodeReward = accumulatedReward;
+            
+            // Log performance
+            Debug.Log($"Episode ended for {agent.name}. Steps: {episodeSteps}, Reward: {episodeReward:F2}");
+            
+            // Reset counters
+            episodeSteps = 0;
+            
+            // Unregister this agent
+            activeAgents.Remove(agent);
+        }
     }
     
     public void ApplyGenomeToConfig(CarGenome genome)
     {
-        if (genome == null) return;
+        if (genome == null || genome.policyParams == null) return;
         
-        // Apply PPO parameters from genome
-        trainingConfig.ppoParams = genome.policyParams.Clone();
-        
-        // Update all active agents
-        foreach (var agent in activeAgents)
+        try
         {
-            ApplyTrainingConfigToAgent(agent);
+            // Apply PPO parameters from genome
+            trainingConfig.ppoParams = genome.policyParams.Clone();
+            
+            // Update agent if it's active
+            if (genome.agent != null && genome.agent.gameObject != null && genome.agent.isActiveAndEnabled)
+            {
+                lock (agentLock)
+                {
+                    if (activeAgents.Contains(genome.agent))
+                    {
+                        ApplyTrainingConfigToAgent(genome.agent);
+                    }
+                }
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Error applying genome to config: {e.Message}");
         }
     }
     
     public void OnGenerationEnd(int generation)
     {
-        // Save model periodically
-        if (generation % saveModelInterval == 0 && geneticManager != null)
+        try
         {
-            // Find best genome
-            CarGenome bestGenome = geneticManager.population
-                .OrderByDescending(g => g.fitness)
-                .FirstOrDefault();
-                
-            if (bestGenome != null)
+            // Save model periodically
+            if (generation % saveModelInterval == 0 && geneticManager != null)
             {
-                SaveModel(bestGenome, generation);
+                // Find best genome
+                CarGenome bestGenome = geneticManager.population
+                    .OrderByDescending(g => g.fitness)
+                    .FirstOrDefault();
+                    
+                if (bestGenome != null)
+                {
+                    SaveModel(bestGenome, generation);
+                }
             }
+            
+            // Clean up agent references at the end of generation
+            lock (agentLock)
+            {
+                activeAgents.RemoveAll(a => a == null || !a.isActiveAndEnabled);
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Error in OnGenerationEnd: {e.Message}");
         }
     }
     
     public void SaveModel(CarGenome bestGenome, int generation)
     {
-        // Create model filename
-        string filename = $"car_model_gen{generation}_fit{bestGenome.fitness:F2}.txt";
+        // Create model filename with metrics
+        string filename = $"car_model_gen{generation}_fit{bestGenome.fitness:F2}_laps{bestGenome.lapsCompleted}.json";
         string filePath = Path.Combine(modelSavePath, filename);
         
         // Save hyperparameters to file
         string hyperparamsJson = JsonUtility.ToJson(bestGenome.policyParams, true);
         File.WriteAllText(filePath, hyperparamsJson);
         
-        // Note: In a real implementation, you would save the actual neural network model
-        // ML-Agents has built-in model saving functionality, but we can't access it directly here
+        // Also save a version marked as 'latest' for easy loading
+        string latestPath = Path.Combine(modelSavePath, "latest_model.json");
+        File.WriteAllText(latestPath, hyperparamsJson);
         
         Debug.Log($"Saved model parameters to {filePath}");
+    }
+    
+    // Method to load a saved model
+    public PPOHyperparameters LoadLatestModel()
+    {
+        string latestPath = Path.Combine(modelSavePath, "latest_model.json");
+        
+        if (File.Exists(latestPath))
+        {
+            try
+            {
+                string json = File.ReadAllText(latestPath);
+                PPOHyperparameters parameters = JsonUtility.FromJson<PPOHyperparameters>(json);
+                Debug.Log("Loaded latest model parameters");
+                return parameters;
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"Error loading model: {e.Message}");
+            }
+        }
+        else
+        {
+            Debug.LogWarning("No saved model found, using default parameters");
+        }
+        
+        // Return default parameters if loading fails
+        return new PPOHyperparameters();
     }
 }

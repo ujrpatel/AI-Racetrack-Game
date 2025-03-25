@@ -22,7 +22,7 @@ public class SplineTrackGenerator : MonoBehaviour
     public float roadWidth = 10f;
     public float wallHeight = 3f;
     public float wallThickness = 0.2f;
-    public float wallOffset = 0.1f;
+    public float wallOffset = 0f; // Changed to 0 to ensure walls are flush with road
     public Material roadMaterial;
     public Material wallMaterial;
     
@@ -35,21 +35,28 @@ public class SplineTrackGenerator : MonoBehaviour
     public bool checkpointsVisible = false;
 
     // For tracking
-    private List<Transform> checkpoints = new List<Transform>();
+    public List<Transform> checkpoints = new List<Transform>();
     private bool initialized = false;
+    
+    // Track metrics for display in inspector
+    [HideInInspector] public float estimatedTrackLength = 0f;
+    [HideInInspector] public float averageCheckpointSpacing = 0f;
 
+    private bool isGenerating = false;
     private void OnEnable()
     {
         // Ensure tags exist
         CreateRequiredTags();
         
         // Initialization
-        if (!initialized)
+        if (!initialized && !isGenerating)
         {
             ValidateSpline();
             if (splineContainer != null)
             {
+                isGenerating = true;
                 GenerateTrack();
+                isGenerating = false;
                 initialized = true;
             }
         }
@@ -146,6 +153,9 @@ public class SplineTrackGenerator : MonoBehaviour
             return;
         }
 
+        // Calculate track length and metrics first
+        CalculateTrackMetrics();
+        
         // Generate road
         GenerateRoad();
         
@@ -158,6 +168,40 @@ public class SplineTrackGenerator : MonoBehaviour
         GenerateCheckpoints();
         
         Debug.Log("Track generation complete");
+    }
+    
+    private void CalculateTrackMetrics()
+    {
+        if (splineContainer == null || splineIndex >= splineContainer.Splines.Count)
+            return;
+            
+        float length = 0f;
+        Vector3 prevPosition = Vector3.zero;
+        bool first = true;
+        
+        // Calculate actual track length using points along the spline
+        for (int i = 0; i <= resolution; i++)
+        {
+            float t = i / (float)resolution;
+            
+            float3 splinePosition, splineTangent, splineUp;
+            if (SplineUtility.Evaluate(splineContainer.Splines[splineIndex], t, out splinePosition, out splineTangent, out splineUp))
+            {
+                Vector3 position = splineContainer.transform.TransformPoint(
+                    new Vector3(splinePosition.x, splinePosition.y + splineOffset, splinePosition.z));
+                
+                if (!first)
+                {
+                    length += Vector3.Distance(prevPosition, position);
+                }
+                
+                prevPosition = position;
+                first = false;
+            }
+        }
+        
+        estimatedTrackLength = length;
+        averageCheckpointSpacing = numberOfCheckpoints > 1 ? length / numberOfCheckpoints : 0;
     }
     
     private void GenerateRoad()
@@ -392,146 +436,172 @@ public class SplineTrackGenerator : MonoBehaviour
     }
 
     private Mesh CreateWallMesh(bool isLeftWall)
-{
-    List<Vector3> vertices = new List<Vector3>();
-    List<int> triangles = new List<int>();
-
-    for (int i = 0; i <= resolution; i++)
     {
-        float t = i / (float)resolution;
-        float3 position, forward, upVector;
-        splineContainer.Evaluate(splineIndex, t, out position, out forward, out upVector);
+        List<Vector3> vertices = new List<Vector3>();
+        List<int> triangles = new List<int>();
 
-        float3 right = math.normalize(math.cross(Vector3.up, forward));
-        float sideMultiplier = isLeftWall ? -0.5f : 0.5f;
-
-        Vector3 baseBottom = (Vector3)(position + (right * roadWidth * sideMultiplier));
-        Vector3 wallBottom = baseBottom + (Vector3)(right * wallOffset * (isLeftWall ? -1 : 1));
-        Vector3 wallTop = wallBottom + new Vector3(0, wallHeight, 0);
-        Vector3 outerBottom = wallBottom + (Vector3)(right * wallThickness * (isLeftWall ? -1 : 1));
-        Vector3 outerTop = wallTop + (Vector3)(right * wallThickness * (isLeftWall ? -1 : 1));
-
-        vertices.Add(wallBottom);
-        vertices.Add(wallTop);
-        vertices.Add(outerBottom);
-        vertices.Add(outerTop);
-
-        if (i < resolution)
+        for (int i = 0; i <= resolution; i++)
         {
-            int start = i * 4;
-
-            if (isLeftWall)
-            {
-                // Reversed triangle winding order for left wall
-                
-                // Front Face (Facing Road)
-                triangles.Add(start);
-                triangles.Add(start + 2);
-                triangles.Add(start + 1);
-
-                triangles.Add(start + 1);
-                triangles.Add(start + 2);
-                triangles.Add(start + 3);
-
-                // Top Face
-                triangles.Add(start + 1);
-                triangles.Add(start + 7);
-                triangles.Add(start + 5);
-
-                triangles.Add(start + 1);
-                triangles.Add(start + 3);
-                triangles.Add(start + 7);
-
-                // Outer Face
-                triangles.Add(start + 2);
-                triangles.Add(start + 6);
-                triangles.Add(start + 3);
-
-                triangles.Add(start + 3);
-                triangles.Add(start + 6);
-                triangles.Add(start + 7);
-
-                // Back Face
-                triangles.Add(start);
-                triangles.Add(start + 4);
-                triangles.Add(start + 2);
-
-                triangles.Add(start + 2);
-                triangles.Add(start + 4);
-                triangles.Add(start + 6);
-
-                // Bottom Face
-                triangles.Add(start);
-                triangles.Add(start + 5);
-                triangles.Add(start + 4);
-
-                triangles.Add(start);
-                triangles.Add(start + 1);
-                triangles.Add(start + 5);
+            float t = i / (float)resolution;
+            float3 position, forward, upVector;
+            
+            try {
+                // Evaluate the spline at this point
+                if (SplineUtility.Evaluate(splineContainer.Splines[splineIndex], t, out position, out forward, out upVector))
+                {
+                    // Add spline offset
+                    position.y += splineOffset;
+                    
+                    // Calculate direction perpendicular to the spline
+                    Vector3 worldPosition = splineContainer.transform.TransformPoint((Vector3)position);
+                    Vector3 worldForward = splineContainer.transform.TransformDirection((Vector3)forward);
+                    Vector3 worldUp = Vector3.up;
+                    Vector3 worldRight = Vector3.Cross(worldUp, worldForward).normalized;
+                    
+                    // Transform back to local space for mesh creation
+                    Vector3 localPosition = transform.InverseTransformPoint(worldPosition);
+                    Vector3 localRight = transform.InverseTransformDirection(worldRight);
+                    
+                    // Determine the wall position (at the exact edge of the road)
+                    float sideMultiplier = isLeftWall ? -0.5f : 0.5f;
+                    Vector3 roadEdge = localPosition + localRight * (roadWidth * sideMultiplier);
+                    
+                    // Wall bottom vertices (exactly at road edge)
+                    Vector3 wallBottom = roadEdge;
+                    Vector3 wallTop = wallBottom + Vector3.up * wallHeight;
+                    
+                    // Outside wall vertices
+                    Vector3 wallDirection = isLeftWall ? -localRight : localRight;
+                    Vector3 outerBottom = wallBottom + wallDirection * wallThickness;
+                    Vector3 outerTop = wallTop + wallDirection * wallThickness;
+                    
+                    // Add vertices in same order as original
+                    vertices.Add(wallBottom);     // Inner bottom
+                    vertices.Add(wallTop);        // Inner top
+                    vertices.Add(outerBottom);    // Outer bottom
+                    vertices.Add(outerTop);       // Outer top
+                    
+                    // Add triangles (when not the last point)
+                    if (i < resolution)
+                    {
+                        int start = i * 4;
+                        
+                        if (isLeftWall)
+                        {
+                            // Front Face (Facing Road)
+                            triangles.Add(start);
+                            triangles.Add(start + 2);
+                            triangles.Add(start + 1);
+                            
+                            triangles.Add(start + 1);
+                            triangles.Add(start + 2);
+                            triangles.Add(start + 3);
+                            
+                            // Top Face
+                            triangles.Add(start + 1);
+                            triangles.Add(start + 7);
+                            triangles.Add(start + 5);
+                            
+                            triangles.Add(start + 1);
+                            triangles.Add(start + 3);
+                            triangles.Add(start + 7);
+                            
+                            // Outer Face
+                            triangles.Add(start + 2);
+                            triangles.Add(start + 6);
+                            triangles.Add(start + 3);
+                            
+                            triangles.Add(start + 3);
+                            triangles.Add(start + 6);
+                            triangles.Add(start + 7);
+                            
+                            // Back Face
+                            triangles.Add(start);
+                            triangles.Add(start + 4);
+                            triangles.Add(start + 2);
+                            
+                            triangles.Add(start + 2);
+                            triangles.Add(start + 4);
+                            triangles.Add(start + 6);
+                            
+                            // Bottom Face
+                            triangles.Add(start);
+                            triangles.Add(start + 5);
+                            triangles.Add(start + 4);
+                            
+                            triangles.Add(start);
+                            triangles.Add(start + 1);
+                            triangles.Add(start + 5);
+                        }
+                        else
+                        {
+                            // Right wall - keep original triangle ordering
+                            
+                            // Front Face (Facing Road)
+                            triangles.Add(start);
+                            triangles.Add(start + 1);
+                            triangles.Add(start + 2);
+                            
+                            triangles.Add(start + 1);
+                            triangles.Add(start + 3);
+                            triangles.Add(start + 2);
+                            
+                            // Top Face
+                            triangles.Add(start + 1);
+                            triangles.Add(start + 5);
+                            triangles.Add(start + 7);
+                            
+                            triangles.Add(start + 1);
+                            triangles.Add(start + 7);
+                            triangles.Add(start + 3);
+                            
+                            // Outer Face
+                            triangles.Add(start + 2);
+                            triangles.Add(start + 3);
+                            triangles.Add(start + 6);
+                            
+                            triangles.Add(start + 3);
+                            triangles.Add(start + 7);
+                            triangles.Add(start + 6);
+                            
+                            // Back Face
+                            triangles.Add(start);
+                            triangles.Add(start + 2);
+                            triangles.Add(start + 4);
+                            
+                            triangles.Add(start + 2);
+                            triangles.Add(start + 6);
+                            triangles.Add(start + 4);
+                            
+                            // Bottom Face
+                            triangles.Add(start);
+                            triangles.Add(start + 4);
+                            triangles.Add(start + 5);
+                            
+                            triangles.Add(start);
+                            triangles.Add(start + 5);
+                            triangles.Add(start + 1);
+                        }
+                    }
+                }
             }
-            else
+            catch (System.Exception e)
             {
-                // Right wall - keep original triangle ordering
-                
-                // Front Face (Facing Road)
-                triangles.Add(start);
-                triangles.Add(start + 1);
-                triangles.Add(start + 2);
-
-                triangles.Add(start + 1);
-                triangles.Add(start + 3);
-                triangles.Add(start + 2);
-
-                // Top Face
-                triangles.Add(start + 1);
-                triangles.Add(start + 5);
-                triangles.Add(start + 7);
-
-                triangles.Add(start + 1);
-                triangles.Add(start + 7);
-                triangles.Add(start + 3);
-
-                // Outer Face
-                triangles.Add(start + 2);
-                triangles.Add(start + 3);
-                triangles.Add(start + 6);
-
-                triangles.Add(start + 3);
-                triangles.Add(start + 7);
-                triangles.Add(start + 6);
-
-                // Back Face
-                triangles.Add(start);
-                triangles.Add(start + 2);
-                triangles.Add(start + 4);
-
-                triangles.Add(start + 2);
-                triangles.Add(start + 6);
-                triangles.Add(start + 4);
-
-                // Bottom Face
-                triangles.Add(start);
-                triangles.Add(start + 4);
-                triangles.Add(start + 5);
-
-                triangles.Add(start);
-                triangles.Add(start + 5);
-                triangles.Add(start + 1);
+                Debug.LogWarning($"Error creating wall mesh at t={t}: {e.Message}");
             }
         }
+
+        if (vertices.Count == 0) return null;
+
+        Mesh mesh = new Mesh
+        {
+            vertices = vertices.ToArray(),
+            triangles = triangles.ToArray()
+        };
+
+        mesh.RecalculateNormals();
+        return mesh;
     }
-
-    if (vertices.Count == 0) return null;
-
-    Mesh mesh = new Mesh
-    {
-        vertices = vertices.ToArray(),
-        triangles = triangles.ToArray()
-    };
-
-    mesh.RecalculateNormals();
-    return mesh;
-}
 
     private void ClearExistingCheckpoints()
     {
@@ -641,6 +711,8 @@ public class SplineTrackGenerator : MonoBehaviour
             // Add checkpoint identifier component
             CheckpointIdentifier identifier = checkpointObj.AddComponent<CheckpointIdentifier>();
             identifier.CheckpointIndex = i;
+
+            checkpointObj.AddComponent<CheckpointTrigger>();
             
             // Special handling for start/finish line (checkpoint 0)
             if (i == 0)
@@ -722,10 +794,28 @@ public class SplineTrackGenerator : MonoBehaviour
             Vector3 up = Vector3.up;
             Vector3 right = Vector3.Cross(up, tangent.normalized).normalized;
             
-            Gizmos.DrawLine(
-                position + right * (roadWidth / 2),
-                position - right * (roadWidth / 2)
-            );
+            // Draw the width of the road
+            Vector3 leftEdge = position - right * (roadWidth / 2);
+            Vector3 rightEdge = position + right * (roadWidth / 2);
+            
+            Gizmos.DrawLine(leftEdge, rightEdge);
+            
+            // Draw wall positions
+            Gizmos.color = Color.red;
+            Gizmos.DrawSphere(leftEdge, 0.2f);
+            Gizmos.DrawSphere(rightEdge, 0.2f);
+            Gizmos.color = Color.yellow;
+        }
+        
+        // Draw checkpoint positions
+        Gizmos.color = Color.green;
+        
+        foreach (Transform checkpoint in checkpoints)
+        {
+            if (checkpoint != null)
+            {
+                Gizmos.DrawSphere(checkpoint.position, 0.5f);
+            }
         }
     }
     
@@ -738,6 +828,22 @@ public class SplineTrackGenerator : MonoBehaviour
             DrawDefaultInspector();
             
             SplineTrackGenerator generator = (SplineTrackGenerator)target;
+            
+            // Display track metrics
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Track Metrics", EditorStyles.boldLabel);
+            
+            // Calculate metrics if not already done
+            if (generator.estimatedTrackLength <= 0)
+            {
+                generator.CalculateTrackMetrics();
+            }
+            
+            EditorGUILayout.LabelField($"Estimated Track Length: {generator.estimatedTrackLength:F2} units");
+            EditorGUILayout.LabelField($"Number of Checkpoints: {generator.numberOfCheckpoints}");
+            EditorGUILayout.LabelField($"Checkpoint Spacing: {generator.averageCheckpointSpacing:F2} units");
+            
+            EditorGUILayout.Space();
             
             if (GUILayout.Button("Generate Track"))
             {
@@ -766,6 +872,10 @@ public class SplineTrackGenerator : MonoBehaviour
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Alignment Help", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox("If the road/walls don't align with your spline, adjust the 'Spline Offset' value.", MessageType.Info);
+            
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Wall Placement", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox("Walls are now placed flush with the edges of the road without gaps.", MessageType.Info);
         }
     }
     #endif

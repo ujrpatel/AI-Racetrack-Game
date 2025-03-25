@@ -2,6 +2,7 @@ using UnityEngine;
 using Unity.MLAgents;
 using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Sensors;
+using System.Collections;
 using System.Collections.Generic;
 
 public class CarAgent : Agent
@@ -29,6 +30,20 @@ public class CarAgent : Agent
     public float wallCollisionPenalty = 1.0f;
     public float offTrackPenalty = 0.5f;
     public float timeoutPenalty = 0.5f;
+
+    public float stationaryTimeout = 3.0f;
+    private float timeSpentStationary = 0f;
+    private bool hasCompletedLap = false;
+    private float episodeStartTime;
+    private float minSpeedThreshold = 2.0f; // Consider stationary below this speed
+    
+    // Track progress monitoring
+    private float progressTrackingInterval = 5.0f; // Check progress every 5 seconds
+    private float lastProgressCheckTime = 0f;
+    private float lastCheckpointProgress = 0f;
+    private Vector3 lastProgressPosition;
+    private bool isCircling = false;
+    private float circlingPenalty = 0.2f;
     
     // Cumulative reward for this episode
     private float episodeReward = 0f;
@@ -50,6 +65,9 @@ public class CarAgent : Agent
     [Header("Exploration Settings")]
     public bool forceExploration = true;
     public float explorationThrottle = 0.8f;
+    
+    // Flag to prevent multiple episode endings
+    private bool isEndingEpisode = false;
     
     // Use Start instead of OnEnable to avoid access modifier issues
     public override void Initialize()
@@ -78,118 +96,175 @@ public class CarAgent : Agent
             rb = gameObject.AddComponent<Rigidbody>();
         }
         
+        // Find lap tracking system if available
+        lapTrackingSystem = FindFirstObjectByType<LapTrackingSystem>();
+        if (lapTrackingSystem != null)
+        {
+            lapTrackingSystem.RegisterAgent(this);
+        }
+        
         // Cache checkpoints if track generator is available
         if (trackGenerator != null)
+{
+    checkpoints = trackGenerator.GetCheckpoints();
+    if (checkpoints != null && checkpoints.Count > 0)
+    {
+        Debug.Log($"[CarAgent] {gameObject.name}: Found {checkpoints.Count} checkpoints from track generator");
+    }
+    else
+    {
+        Debug.LogWarning($"[CarAgent] {gameObject.name}: No checkpoints found from track generator!");
+    }
+}
+else
+{
+    Debug.LogWarning($"[CarAgent] {gameObject.name}: No track generator assigned!");
+}
+        
+        // Initialize progress tracking
+        lastProgressPosition = transform.position;
+        lastProgressCheckTime = Time.time;
+    }
+    
+    void Update()
+    {
+        // Track progress and check for circling behavior
+        if (Time.time - lastProgressCheckTime > progressTrackingInterval)
         {
-            checkpoints = trackGenerator.GetCheckpoints();
+            CheckProgressAlongTrack();
+            lastProgressCheckTime = Time.time;
         }
+    }
+    
+    private void CheckProgressAlongTrack()
+    {
+        // Calculate how much progress we've made toward the next checkpoint
+        if (checkpoints != null && checkpoints.Count > 0 && nextCheckpointIndex < checkpoints.Count)
+        {
+            Transform nextCheckpoint = checkpoints[nextCheckpointIndex];
+            
+            // Calculate progress as distance reduction to next checkpoint
+            float currentDistance = Vector3.Distance(transform.position, nextCheckpoint.position);
+            float previousDistance = Vector3.Distance(lastProgressPosition, nextCheckpoint.position);
+            float progressMade = previousDistance - currentDistance;
+            
+            // Check if we're not making significant progress or driving in circles
+            float distanceTraveled = Vector3.Distance(transform.position, lastProgressPosition);
+            float progressEfficiency = Mathf.Abs(progressMade) / (distanceTraveled + 0.01f);
+            
+            if (distanceTraveled > 10f && progressEfficiency < 0.1f)
+            {
+                // Car is moving but not making progress toward next checkpoint
+                isCircling = true;
+                
+                // Apply circling penalty
+                AddReward(-circlingPenalty);
+                episodeReward -= circlingPenalty;
+                
+                if (enableDebugLogging)
+                {
+                    Debug.Log($"[CarAgent] Detected circling behavior. Efficiency: {progressEfficiency:F2}");
+                }
+            }
+            else
+            {
+                isCircling = false;
+            }
+            
+            // Update for next check
+            lastProgressPosition = transform.position;
+            lastCheckpointProgress = currentDistance;
+        }
+    }
+    
+    private void ResetPosition()
+    {
+        if (trackGenerator == null || checkpoints == null || checkpoints.Count == 0)
+        {
+            // Try to get checkpoints if not already set
+            if (trackGenerator != null)
+            {
+                checkpoints = trackGenerator.GetCheckpoints();
+            }
+            
+            if (checkpoints == null || checkpoints.Count == 0)
+            {
+                Debug.LogWarning("[CarAgent] No checkpoints available for reset position");
+                return;
+            }
+        }
+        
+        // Use start/finish line for reset
+        transform.position = checkpoints[0].position + Vector3.up * 0.5f; // Slight lift to avoid ground collision
+        transform.rotation = checkpoints[0].rotation;
     }
     
     public override void OnEpisodeBegin()
     {
-        // Reset car position to start position
-        if (trackGenerator != null && checkpoints != null && checkpoints.Count > 0)
-        {
-            transform.position = checkpoints[0].position;
-            transform.rotation = checkpoints[0].rotation;
-        }
-        else
-        {
-            // Fallback if checkpoints aren't available
-            if (trackGenerator != null)
-            {
-                // Try to get checkpoints again
-                checkpoints = trackGenerator.GetCheckpoints();
-                if (checkpoints != null && checkpoints.Count > 0)
-                {
-                    transform.position = checkpoints[0].position;
-                    transform.rotation = checkpoints[0].rotation;
-                }
-                else
-                {
-                    // If still no checkpoints, use current position
-                    Debug.LogWarning("[CarAgent] No checkpoints found for reset position");
-                }
-            }
-        }
+        // Reset position to start or last checkpoint
+        ResetPosition();
         
-        // Reset car physics
+        // Reset physics
         if (rb != null)
         {
             rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
         }
-        else
-        {
-            rb = GetComponent<Rigidbody>();
-            Debug.LogWarning("[CarAgent] Rigidbody was null during episode reset, attempting to get component");
-        }
         
-        // Reset checkpoint tracking
-        nextCheckpointIndex = 1; // Start looking for checkpoint 1 since we're at start/finish line
+        // Reset tracking variables
+        nextCheckpointIndex = 1;
         timeSinceLastCheckpoint = 0f;
-        
-        // Reset performance tracking
         totalDistance = 0f;
         lastPosition = transform.position;
+        lastProgressPosition = transform.position;
         totalCheckpointsPassed = 0;
         totalLapsCompleted = 0;
         episodeReward = 0f;
+        hasCompletedLap = false;
+        timeSpentStationary = 0f;
+        episodeStartTime = Time.time;
+        lastProgressCheckTime = Time.time;
+        isCircling = false;
+        isEndingEpisode = false;
         
-        // Reset lap tracking data
-        lastLapTime = 0f;
-        // Note: We don't reset currentLap or bestLapTime across episodes
+        // Apply an initial throttle pulse to overcome static friction
+        if (carController != null)
+        {
+            carController.Move(0, 0.8f, 0);
+        }
         
-        // Reset lap tracking in the LapTrackingSystem
+        // Register with lap tracking system if available
         if (lapTrackingSystem == null)
         {
             lapTrackingSystem = FindFirstObjectByType<LapTrackingSystem>();
             if (lapTrackingSystem != null)
             {
                 lapTrackingSystem.RegisterAgent(this);
+                lapTrackingSystem.ResetLapData(this);
             }
         }
-        
-        if (lapTrackingSystem != null)
+        else
         {
             lapTrackingSystem.ResetLapData(this);
         }
         
         if (enableDebugLogging)
         {
-            Debug.Log($"[CarAgent] Episode started");
-        }
-        // Add randomization to initial conditions for better generalization
-        // Small random rotation to avoid overfitting to exact starting position
-        transform.rotation = transform.rotation * Quaternion.Euler(0, Random.Range(-5f, 5f), 0);
-        
-        // Small random throttle pulse to ensure movement
-        carController.Move(0, Random.Range(0.7f, 1.0f), 0);
-        
-        if (enableDebugLogging)
-        {
-            Debug.Log($"[CarAgent] Episode started for {gameObject.name}");
+            Debug.Log($"[CarAgent] Episode began for {gameObject.name}");
         }
     }
 
     public override void OnActionReceived(ActionBuffers actions)
     {
-        // Extract actions (continuous values)
+        // Extract actions - continuous values
         float steering = actions.ContinuousActions[0]; // -1 to 1
-        // float throttle = actions.ContinuousActions[1]; // 0 to 1
-        // float brake = actions.ContinuousActions[2]; // 0 to 1
-        float throttle = 0.8f;
-        float brake = 0f;
-        
-        if (Time.frameCount % 60 == 0)
-        {
-            Debug.Log($"Agent actions - Steering: {steering}, Throttle: {throttle}, Brake: {brake}");
-        }
+        float throttle = actions.ContinuousActions[1]; // 0 to 1 
+        float brake = actions.ContinuousActions[2]; // 0 to 1
         
         if (forceExploration)
         {
-            throttle = explorationThrottle; // Force throttle to move
-            brake = 0f;                     // Ensure no braking
+            throttle = explorationThrottle;
+            brake = 0f;
         }
         
         // Apply movement through car controller
@@ -203,77 +278,121 @@ public class CarAgent : Agent
         // Calculate rewards
         CalculateRewards();
         
+        // Check for stationary car
+        CheckIfStationary();
+        
         // Update timeout timer
         timeSinceLastCheckpoint += Time.fixedDeltaTime;
         if (timeSinceLastCheckpoint > maxTimeWithoutCheckpoint)
         {
             AddReward(-timeoutPenalty);
             episodeReward -= timeoutPenalty;
-            EndEpisode();
             
             if (enableDebugLogging)
             {
-                Debug.Log($"[CarAgent] Episode ended due to timeout. Total reward: {episodeReward}");
+                Debug.Log($"[CarAgent] Episode ended due to checkpoint timeout. Total reward: {episodeReward}");
+            }
+            
+            StartCoroutine(SafeEndEpisode());
+        }
+    }
+    
+    private void CheckIfStationary()
+    {
+        float speed = rb.linearVelocity.magnitude;
+        
+        if (speed < minSpeedThreshold)
+        {
+            timeSpentStationary += Time.fixedDeltaTime;
+            
+            if (timeSpentStationary > stationaryTimeout)
+            {
+                // Penalize and end episode if car is stuck
+                AddReward(-timeoutPenalty * 0.5f);
+                episodeReward -= timeoutPenalty * 0.5f;
+                
+                if (enableDebugLogging)
+                {
+                    Debug.Log($"[CarAgent] Episode ended because car was stationary for too long. Total reward: {episodeReward}");
+                }
+                
+                StartCoroutine(SafeEndEpisode());
             }
         }
-    }
-    
-    private void CalculateRewards()
-{
-    // Speed reward (small reward for moving at appropriate speed)
-    float speed = rb.linearVelocity.magnitude;
-    float forwardSpeed = Vector3.Dot(transform.forward, rb.linearVelocity);
-    
-    // Only reward if moving forward (penalize backward movement)
-    if (forwardSpeed > 0)
-    {
-        // Progressive reward that scales with speed up to an optimal point
-        float optimalSpeed = carController.maxSpeed * 0.7f; // 70% of max speed is optimal
-        float speedRatio = Mathf.Clamp01(speed / optimalSpeed);
-        
-        // Bell curve reward - maximum at optimal speed, less for too slow or too fast
-        float speedReward = speedRatio * (2.0f - speedRatio) * speedRewardFactor * Time.fixedDeltaTime;
-        AddReward(speedReward);
-        episodeReward += speedReward;
-    }
-    else
-    {
-        // Stronger penalty for moving backward
-        float backwardPenalty = -0.2f * Time.fixedDeltaTime;
-        AddReward(backwardPenalty);
-        episodeReward += backwardPenalty;
-    }
-    
-    // Direction to next checkpoint for alignment reward
-    if (checkpoints != null && checkpoints.Count > 0 && nextCheckpointIndex < checkpoints.Count)
-    {
-        Transform nextCheckpoint = checkpoints[nextCheckpointIndex];
-        Vector3 directionToCheckpoint = (nextCheckpoint.position - transform.position).normalized;
-        
-        // Alignment reward (reward for facing towards next checkpoint)
-        float alignmentWithCheckpoint = Vector3.Dot(transform.forward, directionToCheckpoint);
-        
-        // Exponential reward for good alignment (strongly rewards direct alignment)
-        float alignmentReward = Mathf.Pow(Mathf.Max(0, alignmentWithCheckpoint), 2) * alignmentRewardFactor * Time.fixedDeltaTime;
-        
-        AddReward(alignmentReward);
-        episodeReward += alignmentReward;
-        
-        // Add progressive reward for getting closer to checkpoint
-        float distanceToCheckpoint = Vector3.Distance(transform.position, nextCheckpoint.position);
-        float previousDistance = Vector3.Distance(lastPosition, nextCheckpoint.position);
-        float distanceReward = (previousDistance - distanceToCheckpoint) * 0.05f;
-        
-        if (distanceReward > 0)
+        else
         {
-            AddReward(distanceReward);
-            episodeReward += distanceReward;
+            // Reset stationary timer if car is moving
+            timeSpentStationary = 0f;
         }
     }
-    
-    // Wall proximity penalty using direct raycasts
-    CheckWallProximity();
-}
+
+    private void CalculateRewards()
+    {
+        // Speed reward (encourage forward movement)
+        float speed = rb.linearVelocity.magnitude;
+        float forwardSpeed = Vector3.Dot(transform.forward, rb.linearVelocity);
+        
+        // Only reward if moving forward (penalize backward movement)
+        if (forwardSpeed > 0)
+        {
+            // Progressive reward that increases with speed up to 70% of max speed
+            float optimalSpeed = carController.maxSpeed * 0.7f;
+            float speedRatio = Mathf.Clamp01(speed / optimalSpeed);
+            
+            // Bell curve reward: maximum at optimal speed, less for too slow or too fast
+            float speedReward = speedRatio * (2.0f - speedRatio) * speedRewardFactor * Time.fixedDeltaTime;
+            AddReward(speedReward);
+            episodeReward += speedReward;
+        }
+        else
+        {
+            // Stronger penalty for moving backward
+            float backwardPenalty = -0.2f * Time.fixedDeltaTime;
+            AddReward(backwardPenalty);
+            episodeReward += backwardPenalty;
+        }
+        
+        // Direction to next checkpoint for alignment reward
+        if (checkpoints != null && checkpoints.Count > 0 && nextCheckpointIndex < checkpoints.Count)
+        {
+            Transform nextCheckpoint = checkpoints[nextCheckpointIndex];
+            Vector3 directionToCheckpoint = (nextCheckpoint.position - transform.position).normalized;
+            
+            // Alignment reward (reward for facing towards next checkpoint)
+            float alignmentWithCheckpoint = Vector3.Dot(transform.forward, directionToCheckpoint);
+            
+            // Exponential reward for good alignment
+            if (alignmentWithCheckpoint > 0)
+            {
+                float alignmentReward = Mathf.Pow(alignmentWithCheckpoint, 2) * alignmentRewardFactor * Time.fixedDeltaTime;
+                AddReward(alignmentReward);
+                episodeReward += alignmentReward;
+            }
+            
+            // Distance progress reward - reward for getting closer to next checkpoint
+            float currentDistanceToCheckpoint = Vector3.Distance(transform.position, nextCheckpoint.position);
+            float previousDistanceToCheckpoint = Vector3.Distance(lastPosition, nextCheckpoint.position);
+            float distanceReduction = previousDistanceToCheckpoint - currentDistanceToCheckpoint;
+            
+            if (distanceReduction > 0)
+            {
+                float progressReward = distanceReduction * 0.1f; // Small reward for progress
+                AddReward(progressReward);
+                episodeReward += progressReward;
+            }
+        }
+        
+        // Wall proximity penalties
+        CheckWallProximity();
+        
+        // Penalty for circling behavior
+        if (isCircling)
+        {
+            float penalty = -circlingPenalty * Time.fixedDeltaTime;
+            AddReward(penalty);
+            episodeReward += penalty;
+        }
+    }
     
     private void CheckWallProximity()
     {
@@ -287,7 +406,7 @@ public class CarAgent : Agent
             
             if (Physics.Raycast(transform.position, direction, out RaycastHit hit, rayLength))
             {
-                if (hit.collider.CompareTag("Wall") && hit.distance < 0.2f)
+                if (hit.collider.CompareTag("Wall") && hit.distance < 0.5f)
                 {
                     // Closer hits = higher penalty, weighted by ray direction
                     float[] rayWeights = CalculateRayWeights(rayCount);
@@ -296,6 +415,22 @@ public class CarAgent : Agent
                     float proximityPenalty = -weightedPenalty * Time.fixedDeltaTime;
                     AddReward(proximityPenalty);
                     episodeReward += proximityPenalty;
+                    
+                    // If extremely close to wall, end episode
+                    if (hit.distance < 0.2f)
+                    {
+                        float penalty = -wallCollisionPenalty * 0.5f;
+                        AddReward(penalty);
+                        episodeReward += penalty;
+                        
+                        if (enableDebugLogging)
+                        {
+                            Debug.Log($"[CarAgent] Too close to wall! Penalty: {penalty}");
+                        }
+                        
+                        StartCoroutine(SafeEndEpisode());
+                        break;
+                    }
                 }
             }
             
@@ -326,15 +461,16 @@ public class CarAgent : Agent
         return weights;
     }
     
-    void OnTriggerEnter(Collider other)
-
+    public void SetNextCheckpointIndex(int index)
     {
-
-        if (other == null)
-        {
-            Debug.LogWarning("[CarAgent] Collider in OnTriggerEnter is null");
-            return;
-        }
+        nextCheckpointIndex = index;
+    }
+    
+    void OnTriggerEnter(Collider other)
+    {
+        // Safety check
+        if (other == null) return;
+        
         // Find lap tracking system if not yet assigned
         if (lapTrackingSystem == null)
         {
@@ -344,19 +480,17 @@ public class CarAgent : Agent
                 lapTrackingSystem.RegisterAgent(this);
             }
         }
-
+        
         // Make sure checkpoints are initialized
         if (checkpoints == null || checkpoints.Count == 0)
         {
             if (trackGenerator != null)
             {
                 checkpoints = trackGenerator.GetCheckpoints();
-                Debug.Log($"[CarAgent] Initialized checkpoints in OnTriggerEnter: {(checkpoints != null ? checkpoints.Count : 0)} checkpoints");
             }
         }
         
-        string colliderTag = other.tag;
-        if (colliderTag == "StartFinish")
+        if (other.CompareTag("StartFinish"))
         {
             // Handle start/finish line crossing
             if (lapTrackingSystem != null)
@@ -365,23 +499,10 @@ public class CarAgent : Agent
             }
             else
             {
-                // Fallback if no lap tracking system is found
-                if (nextCheckpointIndex == 1) // About to start looking for checkpoint 1
-                {
-                    // Completed a lap
-                    totalLapsCompleted++;
-                    float lapReward = lapCompletionReward;
-                    AddReward(lapReward);
-                    episodeReward += lapReward;
-                    
-                    if (enableDebugLogging)
-                    {
-                        Debug.Log($"[CarAgent] Lap completed! Total laps: {totalLapsCompleted}");
-                    }
-                }
+                // Fallback if no lap tracking system
+                HandleStartFinishLineCrossing();
             }
             
-            // Always count checkpoint 0 (start/finish) as passed
             // Reset timeout and update tracking
             timeSinceLastCheckpoint = 0f;
             totalCheckpointsPassed++;
@@ -389,36 +510,82 @@ public class CarAgent : Agent
             // Set next checkpoint to 1
             nextCheckpointIndex = 1;
         }
-        else if (colliderTag == "Checkpoint")
+        else if (other.CompareTag("Checkpoint"))
         {
             // Check if this is the correct next checkpoint
             CheckpointIdentifier identifier = other.GetComponent<CheckpointIdentifier>();
             
-            if (identifier != null && identifier.CheckpointIndex == nextCheckpointIndex)
+            if (identifier != null)
             {
-                // Correct checkpoint reached
-                float reward = checkpointReward;
-                AddReward(reward);
-                episodeReward += reward;
-                
-                // Reset timeout and update tracking
-                timeSinceLastCheckpoint = 0f;
-                totalCheckpointsPassed++;
-                
                 // Notify lap tracking system
                 if (lapTrackingSystem != null)
                 {
                     lapTrackingSystem.CheckpointPassed(this, identifier.CheckpointIndex);
                 }
-                
-                // Update next checkpoint
-                nextCheckpointIndex = (nextCheckpointIndex + 1) % checkpoints.Count;
-                
-                if (enableDebugLogging)
+                else
                 {
-                    Debug.Log($"[CarAgent] Checkpoint {identifier.CheckpointIndex} reached. Next: {nextCheckpointIndex}. Reward: +{reward}");
+                    // Fallback if no lap tracking system
+                    HandleCheckpointPassing(identifier);
                 }
             }
+        }
+    }
+    
+    // Fallback methods for when LapTrackingSystem is not available
+    private void HandleCheckpointPassing(CheckpointIdentifier identifier)
+    {
+        if (identifier.CheckpointIndex == nextCheckpointIndex)
+        {
+            // Correct checkpoint reached
+            float reward = checkpointReward;
+            AddReward(reward);
+            episodeReward += reward;
+            
+            // Reset timeout and update tracking
+            timeSinceLastCheckpoint = 0f;
+            totalCheckpointsPassed++;
+            
+            // Update next checkpoint
+            nextCheckpointIndex = (nextCheckpointIndex + 1) % checkpoints.Count;
+            
+            if (enableDebugLogging)
+            {
+                Debug.Log($"[CarAgent] Checkpoint {identifier.CheckpointIndex} reached. Next: {nextCheckpointIndex}. Reward: +{reward}");
+            }
+        }
+    }
+    
+    private void HandleStartFinishLineCrossing()
+    {
+        // Check if this is a lap completion (which means we've passed most checkpoints)
+        if (totalCheckpointsPassed >= checkpoints.Count * 0.8f) // 80% of checkpoints is enough
+        {
+            // Completed a lap
+            totalLapsCompleted++;
+            hasCompletedLap = true;
+            
+            float lapTime = Time.time - episodeStartTime;
+            
+            // Stronger reward for completing lap
+            float lapReward = lapCompletionReward;
+            AddReward(lapReward);
+            episodeReward += lapReward;
+            
+            // Bonus reward for completing lap quickly
+            if (lapTime < 120f) // Adjust based on your track
+            {
+                float timeBonus = Mathf.Clamp(120f - lapTime, 0f, 60f) * 0.1f;
+                AddReward(timeBonus);
+                episodeReward += timeBonus;
+            }
+            
+            if (enableDebugLogging)
+            {
+                Debug.Log($"[CarAgent] Lap completed in {lapTime:F2}s! Total laps: {totalLapsCompleted}");
+            }
+            
+            // Reset lap start time
+            episodeStartTime = Time.time;
         }
     }
     
@@ -445,6 +612,7 @@ public class CarAgent : Agent
         AddReward(reward);
         episodeReward += reward;
         totalLapsCompleted++;
+        hasCompletedLap = true;
         
         if (enableDebugLogging)
         {
@@ -454,17 +622,43 @@ public class CarAgent : Agent
     
     void OnCollisionEnter(Collision collision)
     {
-        if (collision.collider.CompareTag("Wall"))
+        if (collision.gameObject.CompareTag("Wall"))
         {
-            // Penalty for wall collision
+            // Stronger penalty for wall collision
             float penalty = -wallCollisionPenalty;
             AddReward(penalty);
             episodeReward += penalty;
             
             if (enableDebugLogging)
             {
-                Debug.Log($"[CarAgent] Wall collision! Penalty: {penalty}");
+                Debug.Log($"[CarAgent] Wall collision! Penalty: {penalty}, Episode terminated.");
             }
+            
+            // Start coroutine to safely end episode
+            StartCoroutine(SafeEndEpisode());
+        }
+    }
+
+    private IEnumerator SafeEndEpisode()
+    {
+        // Prevent multiple calls
+        if (isEndingEpisode) yield break;
+        isEndingEpisode = true;
+        
+        // Wait for end of frame to avoid calling EndEpisode during physics step
+        yield return new WaitForEndOfFrame();
+        
+        // Call ML-Agents EndEpisode before deactivating
+        EndEpisode();
+        
+        // Deactivate the agent GameObject
+        gameObject.SetActive(false);
+        
+        // Then notify the genetic manager that this episode is complete
+        GeneticPPOManager manager = FindFirstObjectByType<GeneticPPOManager>();
+        if (manager != null)
+        {
+            manager.NotifyGenomeComplete(this);
         }
     }
     
@@ -488,6 +682,7 @@ public class CarAgent : Agent
                 sensor.AddObservation(0f); // Angular velocity
                 sensor.AddObservation(0f); // Checkpoints passed
                 sensor.AddObservation(0f); // Laps completed
+                sensor.AddObservation(0f); // Is circling
                 return;
             }
         }
@@ -557,6 +752,9 @@ public class CarAgent : Agent
         // Track progress
         sensor.AddObservation(totalCheckpointsPassed / 10f); // Normalize by expected max checkpoints
         sensor.AddObservation(totalLapsCompleted / 5f); // Normalize by expected max laps
+        
+        // Add circling detection
+        sensor.AddObservation(isCircling ? 1f : 0f);
     }    
     
     public override void Heuristic(in ActionBuffers actionsOut)
@@ -581,5 +779,38 @@ public class CarAgent : Agent
         checkpointReward = checkpointRwd;
         lapCompletionReward = lapRwd;
         wallCollisionPenalty = collisionPenalty;
+    }
+    
+    // Improved fitness calculation that prioritizes checkpoint progress
+    public float CalculateFitness()
+    {
+        // Base fitness on checkpoints passed (highest priority)
+        float checkpointScore = totalCheckpointsPassed * 10f;
+        
+        // Add bonus for completed laps
+        float lapScore = totalLapsCompleted * 100f;
+        
+        // Add distance component but with less weight if not making checkpoint progress
+        // This prevents reward for driving in circles
+        float progressRatio = Mathf.Clamp01((float)totalCheckpointsPassed / (checkpoints != null ? checkpoints.Count * 2f : 10f));
+        float distanceScore = totalDistance * 0.1f * progressRatio;
+        
+        // Add speed component only if completed lap or making good progress
+        float speedScore = 0f;
+        if (hasCompletedLap || progressRatio > 0.5f)
+        {
+            speedScore = carController.GetSpeed() * 5f * progressRatio;
+        }
+        
+        // Add time efficiency component
+        float timeBonus = 0f;
+        if (totalLapsCompleted > 0)
+        {
+            float avgLapTime = (Time.time - episodeStartTime) / totalLapsCompleted;
+            timeBonus = Mathf.Max(0, 300f - avgLapTime) * 0.2f;
+        }
+        
+        // Combine scores
+        return checkpointScore + lapScore + distanceScore + speedScore + timeBonus;
     }
 }

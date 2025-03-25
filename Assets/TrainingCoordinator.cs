@@ -1,96 +1,96 @@
 using UnityEngine;
 using Unity.MLAgents;
 using System.Collections;
+using System.IO;
+using System.Linq;
 
 public class TrainingCoordinator : MonoBehaviour
 {
     public GeneticPPOManager geneticManager;
     public PPOGATrainer ppoTrainer;
     public SplineTrackGenerator trackGenerator;
-    public bool generateRandomTracksEachGeneration = true;
-    public int maxGenerations = 50;
-    public float trainingTimeScale = 5.0f;
     
-    // Monitoring
+    [Header("Training Settings")]
+    public int maxGenerations = 100;
+    public float trainingTimeScale = 2.0f;
+    public bool loadFromSavedProgress = false;
+    
+    [Header("Multi-Car Training")]
+    public bool enableMultiCarTraining = true;
+    public int carsPerGeneration = 5;
+    
+    // Visualization and monitoring
     private int totalEpisodesRun = 0;
     private float bestFitness = 0;
-    private float bestLapTime = float.MaxValue;
     private int bestLapCount = 0;
-    public bool simultaneousTraining = true;
-    public int maxSimultaneousCars = 5;
-
-    // UI Output (you could connect this to UI elements)
+    
+    // Training Phases
+    [Header("Training Phases")]
+    [Range(1, 3)]
+    public int currentPhase = 1;
+    
+    // UI Output
     public string statusText = "Initializing...";
-    public void SetupSimultaneousTraining()
-{
-    if (geneticManager == null) return;
     
-    // Configure genetic manager for simultaneous training
-    geneticManager.useSimultaneousTraining = simultaneousTraining;
-    geneticManager.maxSimultaneousCars = maxSimultaneousCars;
-    
-    // Determine spacing between cars
-    float trackLength = 0;
-    if (trackGenerator != null)
-    {
-        // Estimate track length based on number of checkpoints and spacing
-        var checkpoints = trackGenerator.GetCheckpoints();
-        if (checkpoints != null && checkpoints.Count > 0)
-        {
-            // Rough estimation of track length
-            trackLength = checkpoints.Count * 20f; // Assuming average 20m between checkpoints
-            
-            // Distribute cars evenly along track
-            geneticManager.carSpacing = trackLength / Mathf.Max(2, maxSimultaneousCars);
-            
-            Debug.Log($"Estimated track length: {trackLength}m, car spacing: {geneticManager.carSpacing}m");
-        }
-    }
-}
-
     void Start()
-{
-    // Make sure ML-Agents Academy is initialized
-    if (Academy.IsInitialized)
     {
-        Debug.Log("ML-Agents Academy is initialized");
+        // Make sure ML-Agents Academy is initialized
+        if (Academy.IsInitialized)
+        {
+            Debug.Log("ML-Agents Academy is initialized");
+        }
+        else
+        {
+            Debug.LogWarning("ML-Agents Academy is not initialized. Running in inference mode only.");
+        }
+        
+        // Set time scale for faster training
+        Time.timeScale = trainingTimeScale;
+        
+        // Check for required components
+        if (geneticManager == null)
+        {
+            Debug.LogError("GeneticPPOManager is not assigned!");
+            return;
+        }
+        
+        if (ppoTrainer == null)
+        {
+            Debug.LogError("PPOGATrainer is not assigned!");
+            return;
+        }
+        
+        // Configure for multi-car training
+        if (enableMultiCarTraining)
+        {
+            geneticManager.useSimultaneousTraining = true;
+            geneticManager.maxSimultaneousCars = carsPerGeneration;
+        }
+        else
+        {
+            geneticManager.useSimultaneousTraining = false;
+        }
+        
+        // Connect components
+        geneticManager.ppoTrainer = ppoTrainer;
+        ppoTrainer.geneticManager = geneticManager;
+        
+        if (loadFromSavedProgress)
+        {
+            LoadTrainingProgress();
+        }
+        
+        // Generate initial track if needed
+        if (trackGenerator != null)
+        {
+            if (trackGenerator.GetCheckpoints().Count == 0)
+            {
+                trackGenerator.GenerateTrack();
+            }
+        }
+        
+        StartCoroutine(MonitorTraining());
     }
-    else
-    {
-        Debug.LogError("ML-Agents Academy is not initialized!");
-    }
-    
-    // Set time scale for faster training
-    Time.timeScale = trainingTimeScale;
-    
-    // Check for required components
-    if (geneticManager == null)
-    {
-        Debug.LogError("GeneticPPOManager is not assigned!");
-        return;
-    }
-    
-    if (ppoTrainer == null)
-    {
-        Debug.LogError("PPOGATrainer is not assigned!");
-        return;
-    }
-    
-    // Set up simultaneous training
-    SetupSimultaneousTraining();
-    
-    // Connect components
-    geneticManager.ppoTrainer = ppoTrainer;
-    ppoTrainer.geneticManager = geneticManager;
-    
-    // Generate initial track if needed
-    if (trackGenerator != null && generateRandomTracksEachGeneration)
-    {
-        trackGenerator.GenerateTrack();
-    }
-    
-    StartCoroutine(MonitorTraining());
-}
     
     IEnumerator MonitorTraining()
     {
@@ -99,16 +99,7 @@ public class TrainingCoordinator : MonoBehaviour
             // Update stats
             UpdateTrainingStats();
             
-            // Generate new track for next generation if enabled
-            if (generateRandomTracksEachGeneration && 
-                geneticManager.currentEpisode == geneticManager.geneticParams.generationEpisodes)
-            {
-                // Prepare to generate a new track for next generation
-                yield return new WaitForEndOfFrame();
-                RandomizeTrack();
-            }
-            
-            yield return new WaitForSeconds(1.0f); // Check every second
+            yield return new WaitForSeconds(5.0f); // Check every 5 seconds
         }
         
         // Training complete
@@ -125,7 +116,7 @@ public class TrainingCoordinator : MonoBehaviour
                             geneticManager.geneticParams.populationSize * 
                             geneticManager.geneticParams.generationEpisodes + 
                             (geneticManager.currentEpisode - 1) * geneticManager.geneticParams.populationSize +
-                            geneticManager.activeGenomeIndex;
+                            geneticManager.activeGenomeIndices.Count;
         
         // Find best fitness in current population
         float currentBestFitness = 0;
@@ -155,24 +146,50 @@ public class TrainingCoordinator : MonoBehaviour
             bestLapCount = currentBestLaps;
         }
         
+        // Calculate completion rates for phase tracking
+        float checkpointCompletionRate = 0;
+        float lapCompletionRate = 0;
+        
+        if (geneticManager.population.Count > 0)
+        {
+            int checkpointThreshold = 5; // Consider "completed" if at least 5 checkpoints passed
+            int checkpointPassedCount = geneticManager.population.Count(g => g.checkpointsPassed >= checkpointThreshold);
+            int lapCompletedCount = geneticManager.population.Count(g => g.lapsCompleted > 0);
+            
+            checkpointCompletionRate = (float)checkpointPassedCount / geneticManager.population.Count;
+            lapCompletionRate = (float)lapCompletedCount / geneticManager.population.Count;
+        }
+        
+        // Determine current phase
+        currentPhase = DetermineCurrentPhase(checkpointCompletionRate, lapCompletionRate);
+        
         // Update status text
         statusText = $"Generation: {geneticManager.currentGeneration}/{maxGenerations}\n" +
                      $"Episode: {geneticManager.currentEpisode}/{geneticManager.geneticParams.generationEpisodes}\n" +
+                     $"Phase: {currentPhase}\n" +
                      $"Best Fitness: {bestFitness:F2}\n" +
                      $"Best Lap Count: {bestLapCount}\n" +
+                     $"Checkpoint Completion: {checkpointCompletionRate:P1}\n" +
+                     $"Lap Completion: {lapCompletionRate:P1}\n" +
                      $"Episodes Run: {totalEpisodesRun}";
         
         Debug.Log(statusText);
     }
     
-    void RandomizeTrack()
+    private int DetermineCurrentPhase(float checkpointRate, float lapRate)
     {
-        if (trackGenerator == null) return;
-        
-        // Restart track generation to create variation
-        trackGenerator.GenerateTrack();
-        
-        Debug.Log("Generated new track for next generation");
+        if (lapRate >= 0.3f)
+        {
+            return 3; // Time optimization
+        }
+        else if (checkpointRate >= 0.7f)
+        {
+            return 2; // Speed optimization
+        }
+        else
+        {
+            return 1; // Navigation
+        }
     }
     
     // Method to manually trigger episode completion (can be called by the agent)
@@ -184,27 +201,83 @@ public class TrainingCoordinator : MonoBehaviour
         }
     }
     
-    // For manually saving the best model
-    public void SaveBestModel()
+    // Method to save current training state
+    private void SaveTrainingProgress()
     {
-        if (geneticManager.population.Count == 0 || ppoTrainer == null) return;
+        // Save generation metrics
+        string saveDir = "Assets/TrainingData";
         
-        // Find the best genome
-        CarGenome bestGenome = null;
-        float highestFitness = float.MinValue;
-        
-        foreach (var genome in geneticManager.population)
+        if (!Directory.Exists(saveDir))
         {
-            if (genome.fitness > highestFitness)
+            Directory.CreateDirectory(saveDir);
+        }
+        
+        // Save basic metrics
+        string metricsPath = Path.Combine(saveDir, "training_state.json");
+        TrainingState state = new TrainingState
+        {
+            currentGeneration = geneticManager.currentGeneration,
+            totalEpisodes = totalEpisodesRun,
+            bestFitness = bestFitness,
+            bestLapCount = bestLapCount,
+            currentPhase = currentPhase
+        };
+        
+        string json = JsonUtility.ToJson(state, true);
+        File.WriteAllText(metricsPath, json);
+        
+        Debug.Log($"Training progress saved to {metricsPath}");
+    }
+    
+    // Method to load training state
+    private void LoadTrainingProgress()
+    {
+        string statePath = "Assets/TrainingData/training_state.json";
+        
+        if (File.Exists(statePath))
+        {
+            try
             {
-                highestFitness = genome.fitness;
-                bestGenome = genome;
+                string json = File.ReadAllText(statePath);
+                TrainingState state = JsonUtility.FromJson<TrainingState>(json);
+                
+                // Restore metrics
+                bestFitness = state.bestFitness;
+                bestLapCount = state.bestLapCount;
+                currentPhase = state.currentPhase;
+                
+                Debug.Log($"Loaded training state: Generation {state.currentGeneration}, Phase {state.currentPhase}");
+                
+                // Also try to load model parameters
+                if (ppoTrainer != null)
+                {
+                    PPOHyperparameters parameters = ppoTrainer.LoadLatestModel();
+                    if (parameters != null && geneticManager.defaultPPOParams != null)
+                    {
+                        geneticManager.defaultPPOParams = parameters;
+                        Debug.Log("Loaded model parameters from saved state");
+                    }
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"Error loading training state: {e.Message}");
             }
         }
-        
-        if (bestGenome != null)
+        else
         {
-            ppoTrainer.SaveModel(bestGenome, geneticManager.currentGeneration);
+            Debug.LogWarning("No saved training state found. Starting from scratch.");
         }
+    }
+    
+    // Class to store training state
+    [System.Serializable]
+    private class TrainingState
+    {
+        public int currentGeneration;
+        public int totalEpisodes;
+        public float bestFitness;
+        public int bestLapCount;
+        public int currentPhase;
     }
 }

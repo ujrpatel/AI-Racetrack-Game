@@ -6272,6 +6272,7 @@ MonoBehaviour:
   wallCollisionPenalty: 1
   offTrackPenalty: 0.5
   timeoutPenalty: 0.5
+  stationaryTimeout: 3
   trackGenerator: {fileID: 0}
   enableDebugLogging: 1
   forceExploration: 0
@@ -6293,8 +6294,8 @@ MonoBehaviour:
   maxSteeringAngle: 30
   brakingForce: 1000
   downforce: 50
-  useWheelVehicle: 1
-  showDebugLogs: 1
+  traction: 1
+  debugMode: 0
 --- !u!65 &2038006587940903533
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -6312,7 +6313,7 @@ BoxCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 1
   m_ProvidesContacts: 0
-  m_Enabled: 0
+  m_Enabled: 1
   serializedVersion: 3
   m_Size: {x: 1, y: 1.0713193, z: 2.8598099}
   m_Center: {x: 0, y: 0.25717795, z: -0.050662994}

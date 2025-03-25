@@ -25,6 +25,10 @@ public class LapTrackingSystem : MonoBehaviour
     // Reference to track generator for checkpoint count
     public SplineTrackGenerator trackGenerator;
     
+    // Checkpoint completion requirements
+    [Range(0.5f, 1.0f)]
+    public float requiredCheckpointCompletion = 0.8f; // Require 80% of checkpoints instead of 100%
+    
     // Debug settings
     public bool showDebugMessages = true;
     
@@ -36,6 +40,8 @@ public class LapTrackingSystem : MonoBehaviour
         public float bestLapTime = float.MaxValue;
         public HashSet<int> visitedCheckpoints = new HashSet<int>();
         public bool eligibleForLapCompletion = false;
+        public Vector3 lastPosition;
+        public float totalLapDistance = 0f; // Track distance for lap
     }
     
     void Start()
@@ -99,7 +105,8 @@ public class LapTrackingSystem : MonoBehaviour
             agentLapData[agentId] = new AgentLapData
             {
                 agentId = agentId,
-                lapStartTime = Time.time
+                lapStartTime = Time.time,
+                lastPosition = agent.transform.position
             };
             
             if (showDebugMessages)
@@ -118,6 +125,34 @@ public class LapTrackingSystem : MonoBehaviour
         }
     }
     
+    void Update()
+    {
+        // Update position and distance tracking for all registered agents
+        foreach (var pair in agentLapData)
+        {
+            var data = pair.Value;
+            CarAgent agent = null;
+            
+            // Find the agent in the scene based on its ID
+            foreach (var carAgent in FindObjectsByType<CarAgent>(FindObjectsSortMode.None))
+            {
+                if (carAgent.gameObject.GetInstanceID().ToString() == data.agentId)
+                {
+                    agent = carAgent;
+                    break;
+                }
+            }
+            
+            if (agent != null && agent.gameObject.activeSelf)
+            {
+                // Track distance for this lap
+                float distanceTraveled = Vector3.Distance(agent.transform.position, data.lastPosition);
+                data.totalLapDistance += distanceTraveled;
+                data.lastPosition = agent.transform.position;
+            }
+        }
+    }
+    
     public void CheckpointPassed(CarAgent agent, int checkpointIndex)
     {
         string agentId = agent.gameObject.GetInstanceID().ToString();
@@ -132,33 +167,21 @@ public class LapTrackingSystem : MonoBehaviour
         // Add this checkpoint to visited set
         data.visitedCheckpoints.Add(checkpointIndex);
         
-        // Check if agent has visited all checkpoints
+        // Check if agent has visited enough checkpoints for lap completion
         if (trackGenerator != null)
         {
             int totalCheckpoints = trackGenerator.GetCheckpoints().Count;
+            int requiredCheckpoints = Mathf.CeilToInt(totalCheckpoints * requiredCheckpointCompletion);
             
-            // Agent must visit all checkpoints except start/finish to be eligible for lap completion
-            if (data.visitedCheckpoints.Count >= totalCheckpoints - 1)
+            // Update eligibility based on percentage completion
+            if (data.visitedCheckpoints.Count >= requiredCheckpoints)
             {
-                // Make sure all checkpoints are visited (except possibly the start/finish which has index 0)
-                bool allVisited = true;
-                for (int i = 1; i < totalCheckpoints; i++)
-                {
-                    if (!data.visitedCheckpoints.Contains(i))
-                    {
-                        allVisited = false;
-                        break;
-                    }
-                }
+                data.eligibleForLapCompletion = true;
                 
-                if (allVisited)
+                if (showDebugMessages)
                 {
-                    data.eligibleForLapCompletion = true;
-                    
-                    if (showDebugMessages)
-                    {
-                        Debug.Log($"Agent {agent.name} has visited all checkpoints and is eligible for lap completion");
-                    }
+                    Debug.Log($"Agent {agent.name} has visited {data.visitedCheckpoints.Count}/{totalCheckpoints} checkpoints " +
+                              $"({data.visitedCheckpoints.Count * 100f / totalCheckpoints:F1}%) and is eligible for lap completion");
                 }
             }
         }
@@ -184,6 +207,7 @@ public class LapTrackingSystem : MonoBehaviour
             data.visitedCheckpoints.Clear();
             data.visitedCheckpoints.Add(0); // Add start/finish checkpoint
             data.eligibleForLapCompletion = false;
+            data.totalLapDistance = 0f;
             
             if (showDebugMessages)
             {
@@ -206,6 +230,9 @@ public class LapTrackingSystem : MonoBehaviour
                 data.bestLapTime = lapTime;
             }
             
+            // Calculate lap metrics
+            float avgSpeed = data.totalLapDistance / lapTime;
+            
             // Record lap time
             LapTimeRecord record = new LapTimeRecord
             {
@@ -218,7 +245,8 @@ public class LapTrackingSystem : MonoBehaviour
             
             if (showDebugMessages)
             {
-                Debug.Log($"Agent {agent.name} completed lap {data.currentLap} in {lapTime:F2} seconds");
+                Debug.Log($"Agent {agent.name} completed lap {data.currentLap} in {lapTime:F2} seconds " +
+                          $"(Avg Speed: {avgSpeed:F2} m/s, Distance: {data.totalLapDistance:F1}m)");
             }
             
             // Reset for next lap
@@ -226,16 +254,31 @@ public class LapTrackingSystem : MonoBehaviour
             data.visitedCheckpoints.Clear();
             data.visitedCheckpoints.Add(0); // Add start/finish checkpoint
             data.eligibleForLapCompletion = false;
+            data.totalLapDistance = 0f;
             
             // Notify the agent of lap completion (for rewards)
             agent.OnLapCompleted(data.currentLap, lapTime);
         }
         else
         {
-            if (showDebugMessages)
+            // The agent crossed the start/finish line but hasn't visited enough checkpoints
+            if (trackGenerator != null)
             {
-                // The agent crossed the start/finish line but hasn't visited all checkpoints
-                Debug.Log($"Agent {agent.name} crossed start/finish but hasn't visited all checkpoints yet");
+                int totalCheckpoints = trackGenerator.GetCheckpoints().Count;
+                
+                if (showDebugMessages)
+                {
+                    Debug.Log($"Agent {agent.name} crossed start/finish but only visited {data.visitedCheckpoints.Count}/{totalCheckpoints} " +
+                              $"checkpoints ({data.visitedCheckpoints.Count * 100f / totalCheckpoints:F1}%), " +
+                              $"needs {requiredCheckpointCompletion * 100f:F0}% to complete lap");
+                }
+            }
+            else
+            {
+                if (showDebugMessages)
+                {
+                    Debug.Log($"Agent {agent.name} crossed start/finish but hasn't visited enough checkpoints yet");
+                }
             }
         }
     }
@@ -321,7 +364,14 @@ public class LapTrackingSystem : MonoBehaviour
             data.lapStartTime = Time.time;
             data.visitedCheckpoints.Clear();
             data.eligibleForLapCompletion = false;
+            data.totalLapDistance = 0f;
+            data.lastPosition = agent.transform.position;
             // Note: We don't reset currentLap or bestLapTime here as they're cumulative stats
+        }
+        else
+        {
+            // If the agent isn't registered yet, register it
+            RegisterAgent(agent);
         }
     }
 }
