@@ -1,0 +1,73 @@
+{
+    "name": "root",
+    "metadata": {
+        "timer_format_version": "0.1.0",
+        "start_time_seconds": "1745106243",
+        "python_version": "3.10.12 | packaged by Anaconda, Inc. | (main, Jul  5 2023, 19:01:18) [MSC v.1916 64 bit (AMD64)]",
+        "command_line_arguments": "C:\\Users\\Uday Patel\\miniconda3\\envs\\mlagents\\Scripts\\mlagents-learn .\\CarConfigs\\car_config.yaml --run-id=test2 --debug",
+        "mlagents_version": "1.1.0",
+        "mlagents_envs_version": "1.1.0",
+        "communication_protocol_version": "1.5.0",
+        "pytorch_version": "2.2.2+cpu",
+        "numpy_version": "1.23.5",
+        "end_time_seconds": "1745106329"
+    },
+    "total": 85.78297690000181,
+    "count": 1,
+    "self": 0.0076200000003154855,
+    "children": {
+        "run_training.setup": {
+            "total": 0.08648950000133482,
+            "count": 1,
+            "self": 0.08648950000133482
+        },
+        "TrainerController.start_learning": {
+            "total": 85.68886740000016,
+            "count": 1,
+            "self": 0.0005939999973634258,
+            "children": {
+                "TrainerController._reset_env": {
+                    "total": 16.82530360000237,
+                    "count": 1,
+                    "self": 16.82530360000237
+                },
+                "TrainerController.advance": {
+                    "total": 68.75662260000172,
+                    "count": 1,
+                    "self": 1.9900002371286973e-05,
+                    "children": {
+                        "env_step": {
+                            "total": 68.75660269999935,
+                            "count": 1,
+                            "self": 68.75659760000053,
+                            "children": {
+                                "SubprocessEnvManager._take_step": {
+                                    "total": 5.099998816149309e-06,
+                                    "count": 1,
+                                    "self": 5.099998816149309e-06
+                                }
+                            }
+                        }
+                    }
+                },
+                "trainer_threads": {
+                    "total": 1.1999982234556228e-06,
+                    "count": 1,
+                    "self": 1.1999982234556228e-06
+                },
+                "TrainerController._save_models": {
+                    "total": 0.10634600000048522,
+                    "count": 1,
+                    "self": 0.012103299999580486,
+                    "children": {
+                        "RLTrainer._checkpoint": {
+                            "total": 0.09424270000090473,
+                            "count": 1,
+                            "self": 0.09424270000090473
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

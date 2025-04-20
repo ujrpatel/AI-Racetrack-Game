@@ -1,0 +1,42 @@
+{
+    "name": "root",
+    "metadata": {
+        "timer_format_version": "0.1.0",
+        "start_time_seconds": "1744991803",
+        "python_version": "3.9.5 (tags/v3.9.5:0a7dcbd, May  3 2021, 17:27:52) [MSC v.1928 64 bit (AMD64)]",
+        "command_line_arguments": "C:\\Users\\Uday Patel\\AppData\\Local\\Programs\\Python\\Python39\\Scripts\\mlagents-learn racing_config.yaml --run-id=racing_test1 --force",
+        "mlagents_version": "0.30.0",
+        "mlagents_envs_version": "0.30.0",
+        "communication_protocol_version": "1.5.0",
+        "pytorch_version": "2.6.0+cpu",
+        "numpy_version": "1.21.2",
+        "end_time_seconds": "1744991878"
+    },
+    "total": 74.7002875,
+    "count": 1,
+    "self": 0.006874199999998609,
+    "children": {
+        "run_training.setup": {
+            "total": 0.09549210000000041,
+            "count": 1,
+            "self": 0.09549210000000041
+        },
+        "TrainerController.start_learning": {
+            "total": 74.5979212,
+            "count": 1,
+            "self": 8.84999999897218e-05,
+            "children": {
+                "TrainerController._reset_env": {
+                    "total": 74.5978176,
+                    "count": 1,
+                    "self": 74.5978176
+                },
+                "TrainerController._save_models": {
+                    "total": 1.5100000013035242e-05,
+                    "count": 1,
+                    "self": 1.5100000013035242e-05
+                }
+            }
+        }
+    }
+}

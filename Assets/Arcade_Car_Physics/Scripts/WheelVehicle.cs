@@ -235,6 +235,13 @@ namespace VehicleBehaviour {
         Rigidbody rb = default;
         internal WheelCollider[] wheels = new WheelCollider[0];
 
+        void Awake() {
+            rb = GetComponent<Rigidbody>();
+            if (rb == null) {
+                Debug.LogError("Rigidbody component missing on " + gameObject.name, gameObject);
+            }
+        }
+
         // Init rigidbody, center of mass, wheels and more
         void Start() {
 #if MULTIOSCONTROLS
@@ -246,7 +253,7 @@ namespace VehicleBehaviour {
 
 		    boost = maxBoost;
 
-            rb = GetComponent<Rigidbody>();
+            // rb = GetComponent<Rigidbody>();
             spawnPosition = transform.position;
             spawnRotation = transform.rotation;
 
@@ -261,6 +268,20 @@ namespace VehicleBehaviour {
             foreach (WheelCollider wheel in wheels)
             {
                 wheel.motorTorque = 0.0001f;
+
+                //  Adjust forward friction
+                WheelFrictionCurve forwardFriction = wheel.forwardFriction;
+                forwardFriction.extremumValue = 1.5f;
+                forwardFriction.asymptoteValue = 1.2f;
+                forwardFriction.stiffness = 1.7f;
+                wheel.forwardFriction = forwardFriction;
+
+                // Adjust sideways friction (important for drift/side sliding)
+                WheelFrictionCurve sidewaysFriction = wheel.sidewaysFriction;
+                sidewaysFriction.extremumValue = 1.57f;
+                sidewaysFriction.asymptoteValue = 1.8f;
+                sidewaysFriction.stiffness = 2.0f; // Higher = more grip
+                wheel.sidewaysFriction = sidewaysFriction;
             }
         }
 
@@ -399,8 +420,12 @@ namespace VehicleBehaviour {
             transform.position = spawnPosition;
             transform.rotation = spawnRotation;
 
-            rb.linearVelocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
+            if (rb != null) {
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+            } else {
+                Debug.LogWarning("Rigidbody is null in WheelVehicle.ResetPos()", gameObject);
+            }
         }
 
         public void ToogleHandbrake(bool h)

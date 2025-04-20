@@ -1,0 +1,68 @@
+{
+    "name": "root",
+    "metadata": {
+        "timer_format_version": "0.1.0",
+        "start_time_seconds": "1745106607",
+        "python_version": "3.10.12 | packaged by Anaconda, Inc. | (main, Jul  5 2023, 19:01:18) [MSC v.1916 64 bit (AMD64)]",
+        "command_line_arguments": "C:\\Users\\Uday Patel\\miniconda3\\envs\\mlagents\\Scripts\\mlagents-learn .\\CarConfigs\\car_config.yaml --run-id=test3 --debug",
+        "mlagents_version": "1.1.0",
+        "mlagents_envs_version": "1.1.0",
+        "communication_protocol_version": "1.5.0",
+        "pytorch_version": "2.2.2+cpu",
+        "numpy_version": "1.23.5",
+        "end_time_seconds": "1745106740"
+    },
+    "total": 133.38567509999848,
+    "count": 1,
+    "self": 0.012299299996811897,
+    "children": {
+        "run_training.setup": {
+            "total": 0.08807160000287695,
+            "count": 1,
+            "self": 0.08807160000287695
+        },
+        "TrainerController.start_learning": {
+            "total": 133.2853041999988,
+            "count": 1,
+            "self": 0.00013749999561696313,
+            "children": {
+                "TrainerController._reset_env": {
+                    "total": 10.24512070000128,
+                    "count": 1,
+                    "self": 10.24512070000128
+                },
+                "TrainerController.advance": {
+                    "total": 122.91830780000237,
+                    "count": 1,
+                    "self": 1.580000389367342e-05,
+                    "children": {
+                        "env_step": {
+                            "total": 122.91829199999847,
+                            "count": 1,
+                            "self": 122.9182867999989,
+                            "children": {
+                                "SubprocessEnvManager._take_step": {
+                                    "total": 5.199999577598646e-06,
+                                    "count": 1,
+                                    "self": 5.199999577598646e-06
+                                }
+                            }
+                        }
+                    }
+                },
+                "TrainerController._save_models": {
+                    "total": 0.12173819999952684,
+                    "count": 1,
+                    "self": 0.01279679999788641,
+                    "children": {
+                        "RLTrainer._checkpoint": {
+                            "total": 0.10894140000164043,
+                            "count": 1,
+                            "self": 0.10894140000164043
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

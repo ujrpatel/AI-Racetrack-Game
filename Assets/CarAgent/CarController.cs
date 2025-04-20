@@ -1,184 +1,125 @@
 using UnityEngine;
 using VehicleBehaviour;
-using System.Collections;
 
 public class CarController : MonoBehaviour
 {
-    private Rigidbody rb;
-    private WheelVehicle wheelVehicle;
+    [Header("Vehicle")]
+    public WheelVehicle wheelVehicle;
 
-    public float maxSpeed = 50f;
-    public float acceleration = 2000f;
-    public float maxSteeringAngle = 30f;
-    public float brakingForce = 500f;
-    public float downforce = 50f;
-    public float traction = 1f;
+    [Header("Track Reference")]
+    [SerializeField] private SplineTrackGenerator trackGenerator;
 
-    private float throttleInput = 0f;
-    private float steeringInput = 0f;
-    private float brakeInput = 0f;
-    
-    public bool debugMode = false;
+    [Header("Control Settings")]
+    public float maxSteer = 1f;
+    public float maxThrottle = 1f;
+    public float maxBrake = 1f;
 
-    void Start()
+    [Header("Debug Metrics")]
+    public float CurrentSteer { get; private set; }
+    public float CurrentThrottle { get; private set; }
+    public float CurrentBrake { get; private set; }
+
+    void Awake()
     {
-        rb = GetComponent<Rigidbody>();
-        wheelVehicle = GetComponent<WheelVehicle>();
-
-        if (rb == null)
-        {
-            Debug.LogError("[CarController] Rigidbody component missing!");
-            rb = gameObject.AddComponent<Rigidbody>();
-            ConfigureRigidbody(rb);
-        }
-        else
-        {
-            ConfigureRigidbody(rb);
-        }
-
-        // Check for WheelVehicle component but don't require it
+        // Get WheelVehicle reference if not assigned
         if (wheelVehicle == null)
         {
-            Debug.Log("[CarController] Using built-in physics system for movement.");
+            wheelVehicle = GetComponent<WheelVehicle>();
+            if (wheelVehicle == null)
+            {
+                Debug.LogError("WheelVehicle component not found on car prefab!");
+            }
+        }
+
+
+        // Find SplineTrackGenerator if not assigned
+        if (trackGenerator == null)
+        {
+            trackGenerator = FindFirstObjectByType<SplineTrackGenerator>();
+            if (trackGenerator == null)
+            {
+                Debug.LogError("[CarController] SplineTrackGenerator not found in scene!");
+            }
+        }
+    }
+
+    public void ApplyControl(float steer, float throttle, float brake)
+    {
+        if (wheelVehicle == null) return;
+
+        // Clamp and store inputs for debugging
+        CurrentSteer = Mathf.Clamp(steer, -1f, 1f);
+        CurrentThrottle = Mathf.Clamp(throttle, -1f, 1f); // Allow negative for reverse
+        CurrentBrake = Mathf.Clamp(brake, 0f, 1f);
+
+        // Apply to vehicle physics
+        wheelVehicle.SetSteering(CurrentSteer * maxSteer);
+        wheelVehicle.SetThrottle(CurrentThrottle * maxThrottle);
+        wheelVehicle.SetBrake(CurrentBrake * maxBrake);
+    }
+
+    public void ResetCar()
+    {
+        if (wheelVehicle == null)
+        {
+            Debug.LogError("WheelVehicle is not assigned in CarController!", gameObject);
+            return;
+        }
+
+        // Reset control inputs
+        wheelVehicle.SetSteering(0f);
+        wheelVehicle.SetThrottle(0f);
+        wheelVehicle.SetBrake(0f);
+
+        // Position at first checkpoint if available
+        if (trackGenerator != null)
+        {
+            var checkpoints = trackGenerator.GetCheckpoints();
+            if (checkpoints != null && checkpoints.Count > 0)
+            {
+                Transform startCheckpoint = checkpoints[0];
+                Vector3 spawnPosition = startCheckpoint.position - (startCheckpoint.forward * 5f) + (Vector3.up * 0.5f);
+                Quaternion spawnRotation = startCheckpoint.rotation;
+
+                // Update spawn position (using reflection to access private fields)
+                System.Reflection.FieldInfo posField = wheelVehicle.GetType().GetField("spawnPosition", 
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                
+                System.Reflection.FieldInfo rotField = wheelVehicle.GetType().GetField("spawnRotation", 
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                
+                if (posField != null && rotField != null)
+                {
+                    posField.SetValue(wheelVehicle, spawnPosition);
+                    rotField.SetValue(wheelVehicle, spawnRotation);
+                    
+                    // Reset vehicle to the spawn position
+                    wheelVehicle.ResetPos();
+                }
+                else
+                {
+                    // Direct method if reflection fails
+                    transform.position = spawnPosition;
+                    transform.rotation = spawnRotation;
+                    
+                    Rigidbody rb = GetComponent<Rigidbody>();
+                    if (rb != null)
+                    {
+                        rb.linearVelocity = Vector3.zero;
+                        rb.angularVelocity = Vector3.zero;
+                    }
+                }
+            }
+            else
+            {
+                Debug.LogWarning("[CarController] No checkpoints found! Using default WheelVehicle spawn position.");
+                wheelVehicle.ResetPos();
+            }
         }
         else
         {
-            Debug.Log("[CarController] WheelVehicle component found, will use it if active.");
-            
-            // Try to optimize WheelVehicle if present
-            try {
-                var diffGearingField = wheelVehicle.GetType().GetField("diffGearing", 
-                    System.Reflection.BindingFlags.Instance | 
-                    System.Reflection.BindingFlags.Public | 
-                    System.Reflection.BindingFlags.NonPublic);
-                
-                if (diffGearingField != null)
-                {
-                    diffGearingField.SetValue(wheelVehicle, 4.0f);
-                }
-                
-                var diffGearingProperty = wheelVehicle.GetType().GetProperty("DiffGearing");
-                if (diffGearingProperty != null)
-                {
-                    diffGearingProperty.SetValue(wheelVehicle, 4.0f);
-                }
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogWarning($"Failed to configure WheelVehicle: {e.Message}");
-            }
-        }
-
-        StartCoroutine(InitialThrottlePulse());
-    }
-    
-    private void ConfigureRigidbody(Rigidbody rb)
-    {
-        // Set reasonable physical properties for a car
-        rb.mass = 1000f;
-        rb.linearDamping = 0.05f;
-        rb.angularDamping = 0.7f;
-        rb.interpolation = RigidbodyInterpolation.Interpolate;
-        rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
-        
-        // Ensure center of mass is low for better stability
-        rb.centerOfMass = new Vector3(0, -0.5f, 0);
-    }
-
-    IEnumerator InitialThrottlePulse()
-    {
-        yield return new WaitForSeconds(0.5f);
-        // Apply a strong initial throttle to overcome static friction
-        for (int i = 0; i < 30; i++)
-        {
-            Move(0, 1.0f, 0);
-            yield return new WaitForFixedUpdate();
+            Debug.LogWarning("[CarController] SplineTrackGenerator not assigned, using default WheelVehicle spawn position.");
+            wheelVehicle.ResetPos();
         }
     }
-
-    void FixedUpdate()
-    {
-        ApplyMovement();
-        ApplyDownforce();
-        
-        if (debugMode && Time.frameCount % 60 == 0)
-        {
-            Debug.Log($"Speed: {GetSpeed():F2} m/s ({GetSpeed() * 3.6f:F2} km/h), " + 
-                  $"Throttle: {throttleInput:F2}, Steering: {steeringInput:F2}");
-        }
-    }
-
-    public void Move(float steering, float throttle, float brake)
-    {
-        steeringInput = Mathf.Clamp(steering, -1f, 1f);
-        throttleInput = Mathf.Clamp(throttle, 0f, 1f);
-        brakeInput = Mathf.Clamp(brake, 0f, 1f);
-        
-        // Use WheelVehicle if available and active, otherwise use direct physics
-        if (wheelVehicle != null)
-        {
-            wheelVehicle.SetSteering(steeringInput);
-            wheelVehicle.SetThrottle(throttleInput);
-            wheelVehicle.SetBrake(brakeInput);
-        }
-    }
-
-    private void ApplyMovement()
-{
-    if (rb == null) return;
-    
-    // Calculate forward force based on throttle
-    Vector3 force = transform.forward * throttleInput * acceleration * 2.0f;
-    rb.AddForce(force, ForceMode.Force);
-    
-    // Apply braking
-    if (brakeInput > 0)
-    {
-        Vector3 brakeForce = -rb.linearVelocity.normalized * brakeInput * brakingForce;
-        rb.AddForce(brakeForce, ForceMode.Force);
-    }
-    
-    // Reduce drag to maintain speed better
-    rb.linearDamping = 0.01f;
-    
-    // Improved steering logic - adjust based on speed
-    float speedFactor = Mathf.Clamp01(rb.linearVelocity.magnitude / maxSpeed);
-    
-    // More steering at low speeds, less at high speeds for stability
-    float steeringMultiplier = 1.0f - (speedFactor * 0.5f);  
-    
-    // Apply steering as torque
-    float steeringTorque = steeringInput * maxSteeringAngle * steeringMultiplier * 20f;
-    rb.AddTorque(Vector3.up * steeringTorque, ForceMode.Force);
-    
-    // Add some direct rotation for more responsive steering at low speeds
-    if (speedFactor < 0.5f && Mathf.Abs(steeringInput) > 0.1f)
-    {
-        float directTurn = steeringInput * steeringMultiplier * Time.deltaTime * 50.0f;
-        transform.Rotate(0, directTurn, 0);
-    }
-    
-    // Log speed periodically for debugging
-    if (Time.frameCount % 120 == 0)
-    {
-        Debug.Log($"Current Speed: {rb.linearVelocity.magnitude} m/s, Force: {force.magnitude}, Steering: {steeringTorque}");
-    }
-}   
-
-    private void ApplyDownforce()
-    {
-        if (rb == null) return;
-        
-        // More downforce at higher speeds
-        float speed = rb.linearVelocity.magnitude;
-        float dynamicDownforce = downforce * Mathf.Clamp01(speed / 10f);
-        rb.AddForce(-transform.up * dynamicDownforce, ForceMode.Force);
-    }
-
-    public float GetSteeringInput() => steeringInput;
-    public float GetThrottleInput() => throttleInput;
-    public float GetBrakeInput() => brakeInput;
-    public float GetSpeed() => rb != null ? rb.linearVelocity.magnitude : 0f;
-    public Vector3 GetVelocity() => rb != null ? rb.linearVelocity : Vector3.zero;
-    public float GetForwardSpeed() => rb != null ? Vector3.Dot(transform.forward, rb.linearVelocity) : 0f;
 }

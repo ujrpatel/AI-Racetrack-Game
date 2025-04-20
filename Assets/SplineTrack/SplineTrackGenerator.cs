@@ -746,6 +746,44 @@ public class SplineTrackGenerator : MonoBehaviour
         Debug.Log($"Generated {checkpoints.Count} checkpoints");
     }
 
+    public List<Vector3> GetTrackPoints()
+    {
+        List<Vector3> points = new List<Vector3>();
+        
+        if (splineContainer == null || splineIndex >= splineContainer.Splines.Count)
+            return points;
+        
+        // Sample points along the spline
+        int sampleCount = 100; // Number of points to sample
+        
+        for (int i = 0; i <= sampleCount; i++)
+        {
+            float t = i / (float)sampleCount;
+            
+            try
+            {
+                float3 splinePosition, splineTangent, splineUp;
+                
+                // Evaluate in spline space
+                if (SplineUtility.Evaluate(splineContainer.Splines[splineIndex], t, out splinePosition, out splineTangent, out splineUp))
+                {
+                    // Convert to world space
+                    Vector3 worldPos = splineContainer.transform.TransformPoint(
+                        new Vector3(splinePosition.x, splinePosition.y + splineOffset, splinePosition.z));
+                    
+                    points.Add(worldPos);
+                }
+            }
+            catch
+            {
+                // Skip on error
+                continue;
+            }
+        }
+        
+        return points;
+    }
+
     // Public getter for checkpoints - needed for LapTrackingSystem
     public List<Transform> GetCheckpoints()
     {
