@@ -390,11 +390,13 @@ public class SplineTrackGenerator : MonoBehaviour
         leftWallObj.transform.SetParent(transform);
         leftWallObj.transform.localPosition = Vector3.zero;
         leftWallObj.tag = "Wall";
+        leftWallObj.layer = LayerMask.NameToLayer("Wall");
         
         GameObject rightWallObj = new GameObject("RightWall");
         rightWallObj.transform.SetParent(transform);
         rightWallObj.transform.localPosition = Vector3.zero;
         rightWallObj.tag = "Wall";
+        rightWallObj.layer = LayerMask.NameToLayer("Wall");
         
         // Add mesh components to walls
         MeshFilter leftMeshFilter = leftWallObj.AddComponent<MeshFilter>();
@@ -718,6 +720,7 @@ public class SplineTrackGenerator : MonoBehaviour
             if (i == 0)
             {
                 checkpointObj.tag = "StartFinish";
+                checkpointObj.layer = LayerMask.NameToLayer("Checkpoints");
                 
                 // Make start/finish checkpoint more distinctive if visible
                 if (renderer != null && checkpointsVisible)
@@ -737,6 +740,7 @@ public class SplineTrackGenerator : MonoBehaviour
             else
             {
                 checkpointObj.tag = "Checkpoint";
+                checkpointObj.layer = LayerMask.NameToLayer("Checkpoints");
             }
             
             // Add to list

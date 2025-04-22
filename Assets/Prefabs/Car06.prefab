@@ -19951,6 +19951,7 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   diffGearing: 8
+  linearSteeringOverride: 0
   brakeForce: 1000
   steerAngle: 50
   steerSpeed: 0.15
@@ -20218,7 +20219,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_BrainParameters:
-    VectorObservationSize: 9
+    VectorObservationSize: 14
     NumStackedVectorObservations: 1
     m_ActionSpec:
       m_NumContinuousActions: 3
@@ -20258,7 +20259,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 192
   logMetrics: 1
-  controlMode: 0
+  controlMode: 1
 --- !u!114 &-5428293840536182823
 MonoBehaviour:
   m_ObjectHideFlags: 0

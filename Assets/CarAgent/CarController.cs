@@ -53,9 +53,11 @@ public class CarController : MonoBehaviour
         CurrentBrake = Mathf.Clamp(brake, 0f, 1f);
 
         // Apply to vehicle physics
-        wheelVehicle.SetSteering(CurrentSteer * maxSteer);
-        wheelVehicle.SetThrottle(CurrentThrottle * maxThrottle);
+        wheelVehicle.Steering = CurrentSteer * maxSteer;
+        wheelVehicle.Throttle = CurrentThrottle * maxThrottle;
         wheelVehicle.SetBrake(CurrentBrake * maxBrake);
+        Debug.Log($"[ApplyControl] Steer: {steer}, Throttle: {throttle}, Brake: {brake}");
+
     }
 
     public void ResetCar()

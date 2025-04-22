@@ -45,6 +45,12 @@ public class TrainingManager : MonoBehaviour
         Debug.Log($"[TrainingManager] Spawning agent at position: {spawnPosition}");
 
         carInstance = Instantiate(carPrefab, spawnPosition, spawnRotation);
+        FollowCamera followCam = FindFirstObjectByType<FollowCamera>();
+        if (followCam != null)
+        {
+            followCam.target = carInstance.transform;
+        }
+
         CarAgent carAgent = carInstance.GetComponent<CarAgent>();
         if (carAgent != null) {
             carAgent.Initialize();
