@@ -76,6 +76,7 @@ public class RewardSystem
 
         // Progress to checkpoint
         Transform nextCheckpoint = trainingManager.GetCheckpoint(agent.GetCurrentCheckpointIndex());
+        Debug.Log($"[REWARDS] Next checkpoint: {nextCheckpoint}");
         if (nextCheckpoint != null)
         {
             float currDist = Vector3.Distance(agent.transform.position, nextCheckpoint.position);
@@ -108,17 +109,20 @@ public class RewardSystem
         }
 
         // Wall proximity reward
-        for (int i = 0; i < wallRayCount; i++)
+        if (agent.StepCount > 25000)
         {
-            float angle = -60f + (i * (120f / (wallRayCount - 1)));
-            Vector3 dir = Quaternion.Euler(0, angle, 0) * agent.transform.forward;
-            if (Physics.Raycast(agent.transform.position + Vector3.up * 0.5f, dir, out RaycastHit hit, maxWallRayDistance))
+            for (int i = 0; i < wallRayCount; i++)
             {
-                if (hit.collider.CompareTag("Wall"))
+                float angle = -60f + (i * (120f / (wallRayCount - 1)));
+                Vector3 dir = Quaternion.Euler(0, angle, 0) * agent.transform.forward;
+                if (Physics.Raycast(agent.transform.position + Vector3.up * 0.5f, dir, out RaycastHit hit, maxWallRayDistance))
                 {
-                    float deviation = Mathf.Abs(hit.distance - optimalWallDistance);
-                    float proximityReward = Mathf.Max(0f, 1f - (deviation / optimalWallDistance)) * wallProximityRewardFactor;
-                    reward += proximityReward;
+                    if (hit.collider.CompareTag("Wall"))
+                    {
+                        float deviation = Mathf.Abs(hit.distance - optimalWallDistance);
+                        float proximityReward = Mathf.Max(0f, 1f - (deviation / optimalWallDistance)) * wallProximityRewardFactor;
+                        reward += proximityReward;
+                    }
                 }
             }
         }

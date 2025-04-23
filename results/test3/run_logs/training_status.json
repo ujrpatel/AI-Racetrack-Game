@@ -9,15 +9,24 @@
                 "auxillary_file_paths": [
                     "results\\test3\\CarAgent\\CarAgent-0.pt"
                 ]
+            },
+            {
+                "steps": 126629,
+                "file_path": "results\\test3\\CarAgent\\CarAgent-126629.onnx",
+                "reward": -142.517337274272,
+                "creation_time": 1745352730.1019194,
+                "auxillary_file_paths": [
+                    "results\\test3\\CarAgent\\CarAgent-126629.pt"
+                ]
             }
         ],
         "final_checkpoint": {
-            "steps": 0,
+            "steps": 126629,
             "file_path": "results\\test3\\CarAgent.onnx",
-            "reward": null,
-            "creation_time": 1745106740.9033418,
+            "reward": -142.517337274272,
+            "creation_time": 1745352730.1019194,
             "auxillary_file_paths": [
-                "results\\test3\\CarAgent\\CarAgent-0.pt"
+                "results\\test3\\CarAgent\\CarAgent-126629.pt"
             ]
         }
     },

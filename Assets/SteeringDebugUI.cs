@@ -3,47 +3,44 @@ using VehicleBehaviour;
 
 public class SteeringDebugUI : MonoBehaviour
 {
-    [Header("Debug Target")]
-    public WheelVehicle targetVehicle;
+    public WheelVehicle vehicle;
 
-    [Header("UI Settings")]
-    public Vector2 screenPosition = new Vector2(0.5f, 0.95f); // Top center
-    public float width = 200f;
-    public float height = 10f;
-    public Color barColor = Color.gray;
-    public Color pointerColor = Color.cyan;
-
-    private Texture2D texture;
-
-    void Start()
+    private void OnGUI()
     {
-        texture = new Texture2D(1, 1);
-        texture.SetPixel(0, 0, Color.white);
-        texture.Apply();
-    }
+        if (vehicle == null)
+        {
+            GUI.Label(new Rect(10, 10, 300, 30), "[DEBUG] No vehicle assigned.");
+            return;
+        }
 
-    void OnGUI()
-    {
-        if (targetVehicle == null) return;
+        // Read current values
+        float steer = Mathf.Clamp(vehicle.Steering, -1f, 1f);
+        float throttle = Mathf.Clamp(vehicle.Throttle, -1f, 1f);
 
-        float steerNormalized = Mathf.Clamp(targetVehicle.SteerAngle / 50f, -1f, 1f); // Normalize assuming 50° max
+        // STEERING BAR (horizontal top-center)
+        float barWidth = 200f;
+        float barHeight = 20f;
+        float barX = (Screen.width - barWidth) / 2f;
+        float barY = 10f;
+        GUI.Box(new Rect(barX, barY, barWidth, barHeight), ""); // Background
 
-        float x = Screen.width * screenPosition.x - width / 2;
-        float y = Screen.height * (1 - screenPosition.y);
+        float steerNormalized = (steer + 1f) / 2f;
+        float steerX = barX + steerNormalized * barWidth - 5f;
+        GUI.Box(new Rect(steerX, barY, 10f, barHeight), "•");
 
-        // Draw background bar
-        GUI.color = barColor;
-        GUI.DrawTexture(new Rect(x, y, width, height), texture);
+        // THROTTLE BAR (vertical top-right)
+        float tBarHeight = 200f;
+        float tBarWidth = 20f;
+        float tBarX = Screen.width - tBarWidth - 10f;
+        float tBarY = 10f;
+        GUI.Box(new Rect(tBarX, tBarY, tBarWidth, tBarHeight), ""); // Background
 
-        // Draw center line
-        GUI.color = Color.black;
-        GUI.DrawTexture(new Rect(x + width / 2 - 1, y, 2, height), texture);
+        float throttleNormalized = (throttle + 1f) / 2f;
+        float throttleY = tBarY + (1f - throttleNormalized) * tBarHeight - 5f;
+        GUI.Box(new Rect(tBarX, throttleY, tBarWidth, 10f), "•");
 
-        // Draw pointer
-        float pointerX = x + (width / 2) + (steerNormalized * (width / 2)) - 2;
-        GUI.color = pointerColor;
-        GUI.DrawTexture(new Rect(pointerX, y - 4, 4, height + 8), texture);
-
-        GUI.color = Color.white; // Reset color
+        // Labels (for quick testing)
+        GUI.Label(new Rect(barX, barY + 25f, 150f, 20f), $"Steer: {steer:F2}");
+        GUI.Label(new Rect(tBarX - 100f, tBarY + tBarHeight + 5f, 150f, 20f), $"Throttle: {throttle:F2}");
     }
 }

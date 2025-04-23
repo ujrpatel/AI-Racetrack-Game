@@ -68,10 +68,10 @@ public class CarAgent : Agent
             Debug.LogWarning("No TrainingManager found in the scene. Some functionality may be limited.", this);
         }
         rewardSystem = new RewardSystem(this, trainingManager);
-        if (controlMode != ControlMode.MLAgent && VehicleController is WheelVehicle wheel)
-        {
-            wheel.LinearSteeringOverride = true;
-        }
+        // if (controlMode != ControlMode.MLAgent && VehicleController is WheelVehicle wheel)
+        // {
+        //     wheel.LinearSteeringOverride = true;
+        // }
     }
     
     public override void OnEpisodeBegin()
@@ -168,8 +168,8 @@ public class CarAgent : Agent
     public override void Heuristic(in ActionBuffers actionsOut)
     {
         ActionSegment<float> continuousActions = actionsOut.ContinuousActions;
-        continuousActions[0] = 1.0f;
-        continuousActions[1] = 0.5f;
+        continuousActions[0] = 0.0f;
+        continuousActions[1] = 0.1f;
         continuousActions[2] = 0.0f;
     }
     

@@ -19951,7 +19951,7 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   diffGearing: 8
-  linearSteeringOverride: 0
+  linearSteeringOverride: 1
   brakeForce: 1000
   steerAngle: 50
   steerSpeed: 0.15
@@ -20259,7 +20259,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 192
   logMetrics: 1
-  controlMode: 1
+  controlMode: 0
 --- !u!114 &-5428293840536182823
 MonoBehaviour:
   m_ObjectHideFlags: 0
