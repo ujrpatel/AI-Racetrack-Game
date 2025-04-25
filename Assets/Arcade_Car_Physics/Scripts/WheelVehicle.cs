@@ -327,7 +327,7 @@ namespace VehicleBehaviour {
                 // Turn
                 steering = turnInputCurve.Evaluate(GetInput(turnInput)) * steerAngle;
                 // SteerAngle = steering; 
-                Debug.Log($"[WHEEL VEHCILE] steering {steering}");
+                // Debug.Log($"[WHEEL VEHCILE] steering {steering}");
                 // Dirft
                 drift = GetInput(driftInput) > 0 && rb.linearVelocity.sqrMagnitude > 100;
                 // Jump
@@ -356,13 +356,13 @@ namespace VehicleBehaviour {
                 if (linearSteeringOverride)
                 {
                     wheel.steerAngle = SteerAngle * steering;
-                    Debug.Log($"[WheelVehicle] Directly setting wheel.steerAngle = {SteerAngle}");
+                    // Debug.Log($"[WheelVehicle] Directly setting wheel.steerAngle = {SteerAngle}");
                 }
                 else
                 {
                     float interpolated = Mathf.Lerp(wheel.steerAngle, steering, steerSpeed);
                     wheel.steerAngle = interpolated;
-                    Debug.Log($"[WheelVehicle] Lerp to wheel.steerAngle = {interpolated}");
+                    // Debug.Log($"[WheelVehicle] Lerp to wheel.steerAngle = {interpolated}");
                 }
             }
 

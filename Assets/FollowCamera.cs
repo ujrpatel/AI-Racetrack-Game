@@ -11,7 +11,7 @@ public class FollowCamera : MonoBehaviour {
             return;
         }
 
-        Debug.Log("[FollowCamera] Following target at position: " + target.position);
+        // Debug.Log("[FollowCamera] Following target at position: " + target.position);
 
         Vector3 desiredPosition = target.position + target.TransformDirection(offset);
         Vector3 smoothedPosition = Vector3.Lerp(transform.position, desiredPosition, smoothSpeed);

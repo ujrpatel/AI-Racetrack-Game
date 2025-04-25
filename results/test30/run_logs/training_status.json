@@ -1,0 +1,56 @@
+{
+    "CarAgent": {
+        "checkpoints": [
+            {
+                "steps": 499973,
+                "file_path": "results\\test30\\CarAgent\\CarAgent-499973.onnx",
+                "reward": -181.65060400217772,
+                "creation_time": 1745530027.0710852,
+                "auxillary_file_paths": [
+                    "results\\test30\\CarAgent\\CarAgent-499973.pt"
+                ]
+            },
+            {
+                "steps": 767945,
+                "file_path": "results\\test30\\CarAgent\\CarAgent-767945.onnx",
+                "reward": -0.5586487414936224,
+                "creation_time": 1745531051.9012063,
+                "auxillary_file_paths": [
+                    "results\\test30\\CarAgent\\CarAgent-767945.pt"
+                ]
+            },
+            {
+                "steps": 801513,
+                "file_path": "results\\test30\\CarAgent\\CarAgent-801513.onnx",
+                "reward": -0.5723699349910021,
+                "creation_time": 1745531305.142597,
+                "auxillary_file_paths": [
+                    "results\\test30\\CarAgent\\CarAgent-801513.pt"
+                ]
+            },
+            {
+                "steps": 900122,
+                "file_path": "results\\test30\\CarAgent\\CarAgent-900122.onnx",
+                "reward": -0.5799585379660129,
+                "creation_time": 1745531930.0960534,
+                "auxillary_file_paths": [
+                    "results\\test30\\CarAgent\\CarAgent-900122.pt"
+                ]
+            }
+        ],
+        "final_checkpoint": {
+            "steps": 900122,
+            "file_path": "results\\test30\\CarAgent.onnx",
+            "reward": -0.5799585379660129,
+            "creation_time": 1745531930.0960534,
+            "auxillary_file_paths": [
+                "results\\test30\\CarAgent\\CarAgent-900122.pt"
+            ]
+        }
+    },
+    "metadata": {
+        "stats_format_version": "0.3.0",
+        "mlagents_version": "1.1.0",
+        "torch_version": "2.2.2+cpu"
+    }
+}

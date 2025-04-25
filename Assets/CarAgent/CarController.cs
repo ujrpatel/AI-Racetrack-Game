@@ -56,7 +56,7 @@ public class CarController : MonoBehaviour
         wheelVehicle.Steering = CurrentSteer * maxSteer;
         wheelVehicle.Throttle = CurrentThrottle * maxThrottle;
         wheelVehicle.SetBrake(CurrentBrake * maxBrake);
-        Debug.Log($"[ApplyControl] Steer: {steer}, Throttle: {throttle}, Brake: {brake}");
+        // Debug.Log($"[ApplyControl] Steer: {steer}, Throttle: {throttle}, Brake: {brake}");
 
     }
 
