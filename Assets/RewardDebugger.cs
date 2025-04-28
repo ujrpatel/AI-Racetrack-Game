@@ -11,7 +11,8 @@ public class RewardDebugger : MonoBehaviour
     [HideInInspector] public float total;
     [HideInInspector] public float projectedDistance;
     [HideInInspector] public float MAXprojectedDistance;
-        [HideInInspector] public float GlobalprojectedDistance;
+    [HideInInspector] public float GlobalprojectedDistance;
+    [HideInInspector] public float lapTime;
 
     private GUIStyle style;
 
@@ -25,6 +26,9 @@ public class RewardDebugger : MonoBehaviour
 
     private void OnGUI()
     {
+        var agent = GetComponentInParent<CarAgent>();
+        if (agent == null || !agent.isMainAgent) return;
+
         string info = $@"
 <b>REWARDS</b>
 Speed: {speedReward:F3}
@@ -36,6 +40,7 @@ GBL Projected distance: {GlobalprojectedDistance:F3}
 Reverse: {reversePenalty:F3}
 Circling: {circlingPenalty:F3}
 Wall: {wallProximity:F3}
+<b>Lap Time:</b> {lapTime:F3}s
 <b>Total: {total:F3}</b>";
 
         GUI.Label(new Rect(10, 10, 300, 200), info, style);

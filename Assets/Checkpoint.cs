@@ -30,4 +30,11 @@ public class Checkpoint : MonoBehaviour
             agent.OnCheckpointPassed(checkpointIndex);
         }
     }
+    void OnDrawGizmos()
+    {
+        // Draw checkpoint number in scene view for easier identification
+        // #if UNITY_EDITOR
+        // UnityEditor.Handles.Label(transform.position + Vector3.up * 2, $"CP {checkpointIndex}");
+        // #endif
+    }
 }

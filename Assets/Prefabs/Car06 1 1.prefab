@@ -4980,6 +4980,7 @@ GameObject:
   - component: {fileID: 7267932107472331677}
   - component: {fileID: 4456301273863959920}
   - component: {fileID: -206039774467599387}
+  - component: {fileID: -4607560859789162378}
   m_Layer: 8
   m_Name: Car06 1 1
   m_TagString: Player
@@ -5387,7 +5388,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_BrainParameters:
-    VectorObservationSize: 32
+    VectorObservationSize: 38
     NumStackedVectorObservations: 1
     m_ActionSpec:
       m_NumContinuousActions: 3
@@ -5420,15 +5421,18 @@ MonoBehaviour:
   agentParameters:
     maxStep: 0
   hasUpgradedFromAgentParameters: 1
-  MaxStep: 5000
+  MaxStep: 15000
   trainingManager: {fileID: 0}
+  isMainAgent: 0
   useRayPerceptionSensor: 0
   raycastDistance: 10
   raycastLayer:
     serializedVersion: 2
     m_Bits: 192
   logMetrics: 1
-  controlMode: 2
+  lapsCompleted: 0
+  liveLapTime: 0
+  controlMode: 0
 --- !u!114 &7267932107472331677
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5487,6 +5491,20 @@ MonoBehaviour:
   projectedDistance: 0
   MAXprojectedDistance: 0
   GlobalprojectedDistance: 0
+  lapTime: 0
+--- !u!114 &-4607560859789162378
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2463267730656744761}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 92544211b6895b144a6449c28d9b03c2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  showGui: 1
 --- !u!1 &3846611569516718999
 GameObject:
   m_ObjectHideFlags: 0

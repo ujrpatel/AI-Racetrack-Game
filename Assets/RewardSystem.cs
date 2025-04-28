@@ -37,22 +37,43 @@ public class RewardSystem
     private const int wallRayCount = 6;
     private float globalMaxTrackProgress = 0f;
 
+
+    // Phase 2 Cofiguration
+    public float timePenaltyFactor  = 0.001f;
+    // How harshly to punish braking on a straight
+    public float brakePenaltyFactor = 0.005f;
+    // Only penalize brakes when forward speed > this
+    private const float brakeSpeedThreshold = 1f;
+    // Only penalize if brake input > this
+    private const float brakeInputThreshold = 0.1f;
+
+    private float spawnOffsetT;
+
     public RewardSystem(CarAgent agent, TrainingManager trainingManager)
     {
         this.agent = agent;
         this.trainingManager = trainingManager;
         debugger = agent.GetComponentInChildren<RewardDebugger>();
+         int total = trainingManager.GetCheckpointCount();
+        spawnOffsetT = total > 0 
+        ? (float)agent.GetSpawnCheckpointIndex() / total 
+        : 0f;
         Reset();
     }
 
     public void Reset()
     {
         Transform nextCheckpoint = trainingManager.GetCheckpoint(agent.GetCurrentCheckpointIndex());
-        lastDistanceToCheckpoint = nextCheckpoint != null ? Vector3.Distance(agent.transform.position, nextCheckpoint.position) : float.MaxValue;
+        lastDistanceToCheckpoint = nextCheckpoint != null
+            ? Vector3.Distance(agent.transform.position, nextCheckpoint.position)
+            : float.MaxValue;
+        
         lastPosition = agent.transform.position;
         lastCheckpointProgress = lastDistanceToCheckpoint;
         lastProgressCheckTime = Time.time;
-        maxTrackProgress = 0f;
+
+        maxTrackProgress = spawnOffsetT;
+        globalMaxTrackProgress = spawnOffsetT;
         isCircling = false;
         timeStationary = 0f;
         lastCheckpointIndex = -1;
@@ -64,6 +85,17 @@ public class RewardSystem
         Rigidbody rb = agent.GetComponent<Rigidbody>();
         Vector3 velocity = rb.linearVelocity;
         float speed = velocity.magnitude;
+
+        // Phase 2: lap 0 = phase 1 | lap 1 = 0.5 | lap 2+ = 1.0 full weight
+        float phaseWeight = 0f;
+        if (agent.lapsCompleted >= 2) phaseWeight = 1f;
+        else if (agent.lapsCompleted == 1) phaseWeight = 0.5f;
+
+        if (phaseWeight > 0f)
+        {
+            // scale by fixedDeltaTime 
+            reward -= phaseWeight * timePenaltyFactor * Time.fixedDeltaTime;
+        }
 
         // Penalize standing still
         if (speed < minSpeedThreshold)
@@ -110,22 +142,24 @@ public class RewardSystem
         //     Vector3 toNearest = (Vector3)nearestPoint - agent.transform.position;
         //     float alignmentToSpline = Vector3.Dot(agent.transform.forward, toNearest.normalized);
 
-        //     if (t > maxTrackProgress && alignmentToSpline > 0.5f)
+        //     float relT = (t - spawnOffsetT + 1f) % 1f;
+
+        //     if (relT > maxTrackProgress && alignmentToSpline > 0.5f)
         //     {
-        //         float rewardGain = (t - maxTrackProgress) * 10f; // Tune multiplier for impact
+        //         float rewardGain = (relT - maxTrackProgress) * 10f; // Tune multiplier for impact
         //         reward += rewardGain;
-        //         maxTrackProgress = t;
+        //         maxTrackProgress = relT;
 
         //         // Optional: bonus for global exploration beyond past best
-        //         if (t > globalMaxTrackProgress)
+        //          if (relT > globalMaxTrackProgress)
         //         {
-        //             reward += 1.0f; // One-time bonus per new record
-        //             globalMaxTrackProgress = t;
+        //             reward += 1.0f;
+        //             globalMaxTrackProgress = relT;
         //         }
 
         //         if (debugger != null)
         //         {
-        //             debugger.projectedDistance = t;
+        //             debugger.projectedDistance = relT;
         //             debugger.MAXprojectedDistance = maxTrackProgress;
         //             debugger.GlobalprojectedDistance = globalMaxTrackProgress;
         //         }
@@ -198,6 +232,24 @@ public class RewardSystem
         //         }
         //     }
         // }
+
+        if (phaseWeight > 0f)
+        {
+            // Read the actual brake input from CarController
+            var ctrl = agent.GetComponent<CarController>();
+            float brakeInput = ctrl.CurrentBrake;
+
+            if (forwardSpeed > brakeSpeedThreshold && brakeInput > brakeInputThreshold)
+            {
+                float penalty = phaseWeight
+                              * brakePenaltyFactor
+                              * brakeInput
+                              * Time.fixedDeltaTime;
+                reward -= penalty;
+                if (debugger != null) debugger.reversePenalty = penalty; 
+            }
+        }
+
         if (debugger != null) debugger.total = reward;
         // Debug.Log($"reward: {reward}");
         return reward;

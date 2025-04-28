@@ -470,6 +470,32 @@ namespace VehicleBehaviour {
             handbrake = h;
         }
 
+
+        // Check if the car is on the racetrack
+        public bool AllWheelsOnRoad()
+        {
+            // 'wheels' is the private WheelCollider[] filled in Start()
+            foreach (var wheel in wheels)
+            {
+                WheelHit hit;
+                // If this wheel isn’t touching anything, or touching something
+                // that isn’t tagged "Road", fail.
+                if (wheel.GetGroundHit(out hit))
+                {
+                    if (!hit.collider.CompareTag("Road"))
+                        return false;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+
+
+
         // MULTIOSCONTROLS is another package I'm working on ignore it I don't know if it will get a release.
 #if MULTIOSCONTROLS
         private static MultiOSControls _controls;

@@ -14,7 +14,7 @@ public class TrainingManager : MonoBehaviour
     // private GameObject carInstance;
 
     [Header("Agent Settings")]
-    [Range(1, 5)] public int numberOfAgents = 1; //  Number of agents to spawn
+    [Range(1, 5)] public int numberOfAgents = 5; //  Number of agents to spawn
     public float spawnSpacing = 2.0f; //  Offset between spawned cars
 
     void Awake()
@@ -58,12 +58,12 @@ public class TrainingManager : MonoBehaviour
         for (int i = 0; i < numberOfAgents; i++)
         {
             int checkpointIndex = (i == 0) ? 0 : Random.Range(1, checkpoints.Count);
-            SpawnAgent(checkpointIndex, i);
+            SpawnAgent(checkpointIndex);
         }
 
     }
 
-    void SpawnAgent(int checkpointIndex, int agentNumber) {
+    void SpawnAgent(int checkpointIndex) {
 
         Transform spawnPoint = GetCheckpoint(checkpointIndex);
         if (spawnPoint == null) {
@@ -71,30 +71,43 @@ public class TrainingManager : MonoBehaviour
             return;
         }
 
-        Vector3 offset = spawnPoint.right * spawnSpacing * agentNumber;
-        // Spawn the car 5 units before the checkpoint to trigger the lap timer
-        Vector3 spawnPosition = spawnPoint.position - (spawnPoint.forward * 5f) + (Vector3.up * 0.5f + offset);
-        Quaternion spawnRotation = spawnPoint.rotation;
+        // Small random rotation 5 degrees, to provide randomisation and generalisation
+        float randomYaw = Random.Range(-5f, 5f);
+        Quaternion spawnRotation = Quaternion.Euler(0f, spawnPoint.rotation.eulerAngles.y + randomYaw, 0f);
+
+        // Small variations lateraly and linearlly across the checkpoints, for randomisation. different senarios
+        Vector3 lateralJitter = spawnPoint.right * Random.Range(-0.5f, 0.5f);
+        Vector3 forwardJitter = spawnPoint.forward * Random.Range(-1f, 1f);
+
+        Vector3 spawnPosition = spawnPoint.position - (spawnPoint.forward * 3f) + lateralJitter + forwardJitter + (Vector3.up * 0.5f);
+        
         // Debug.Log($"[TrainingManager] Spawning agent at position: {spawnPosition}");
 
         GameObject car = Instantiate(carPrefab, spawnPosition, spawnRotation);
+        CarAgent carAgent = car.GetComponent<CarAgent>();
         carInstances.Add(car);
-
+        
         // Attach the camera only to the first agent
-        if (agentNumber == 0)
+        if (carInstances.Count == 1)
         {
             FollowCamera cam = FindFirstObjectByType<FollowCamera>();
             if (cam != null)
             {
+                //traking the main car with camera and lapping system
+                carAgent.isMainAgent = true;
                 cam.target = car.transform;
+            }
+            else
+            {
+                carAgent.isMainAgent = false;
             }
         }
 
-        CarAgent carAgent = car.GetComponent<CarAgent>();
         if (carAgent != null) {
+
             carAgent.SetSpawnCheckpointIndex(checkpointIndex);
             carAgent.Initialize();
-            carAgent.trainingManager = this; // expose reference
+            carAgent.trainingManager = this; // exposed reference
             carAgents.Add(carAgent);
         }
     }

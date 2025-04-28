@@ -4,6 +4,8 @@ using Unity.MLAgents.Sensors;
 using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Policies;
 using VehicleBehaviour;
+using Unity.Collections.LowLevel.Unsafe;
+using System.Collections.Generic;  
 
 
 
@@ -20,6 +22,8 @@ public class CarAgent : Agent
     private bool autoExplorationTriggered = false;
 //autoExplorationTriggered
 
+    [HideInInspector]
+    public bool isMainAgent = false;
 
 
     
@@ -40,7 +44,8 @@ public void SetSpawnCheckpointIndex(int index)
 }
 public int GetSpawnCheckpointIndex() => spawnCheckpointIndex;
 
-
+    [HideInInspector]
+    public int lapsCompleted = 0;
     public enum ControlMode
     {
         MLAgent,
@@ -56,6 +61,9 @@ public int GetSpawnCheckpointIndex() => spawnCheckpointIndex;
 
     private float epsilon => Mathf.Lerp(0.5f, 0.05f, Academy.Instance.TotalStepCount / 1_000_000f);
     public float TimeSinceLastCheckpoint => timeSinceLastCheckpoint;
+
+    private float lapStartTime;
+    private readonly List<float> lapTimes = new List<float>();
 
     
     public override void Initialize()
@@ -100,7 +108,17 @@ public int GetSpawnCheckpointIndex() => spawnCheckpointIndex;
     
     public override void OnEpisodeBegin()
     {
-        if (spawnCheckpointIndex == 0)
+        maxCheckpointIndexAchieved = spawnCheckpointIndex;
+        currentCheckpointIndex = spawnCheckpointIndex;
+
+        base.OnEpisodeBegin();
+        // Reset the lap timer only for the main agent
+        if (isMainAgent)
+        {
+            lapStartTime = Time.time;
+            lapTimes.Clear();
+        }
+            if (spawnCheckpointIndex == 0)
         {
             ResetCar();
         }
@@ -232,6 +250,7 @@ public int GetSpawnCheckpointIndex() => spawnCheckpointIndex;
     public override void OnActionReceived(ActionBuffers actions)
 
     {
+        
         timeSinceLastCheckpoint += Time.fixedDeltaTime;
 
         if (Input.GetKeyDown(KeyCode.E))
@@ -280,33 +299,33 @@ public int GetSpawnCheckpointIndex() => spawnCheckpointIndex;
             float brake = actions.ContinuousActions[2];
 
             // Hybrid exploration: epsilon-greedy and stuck mode
-            if (isExploringMode )
-            {
-                // Debug.Log("randomsteps taken");
-                // steer += Random.Range(-0.6f, 0.6f);
-                // throttle += Random.Range(-0.3f, 0.3f);
-                // steer = Random.Range(-1f, 1f);       // full overwrite
-                // throttle = Random.Range(0.3f, 1f);   // prefer forward motion
-                // brake = Random.Range(0f, 0.2f);
+            // if (isExploringMode )
+            // {
+            //     // Debug.Log("randomsteps taken");
+            //     // steer += Random.Range(-0.6f, 0.6f);
+            //     // throttle += Random.Range(-0.3f, 0.3f);
+            //     // steer = Random.Range(-1f, 1f);       // full overwrite
+            //     // throttle = Random.Range(0.3f, 1f);   // prefer forward motion
+            //     // brake = Random.Range(0f, 0.2f);
 
-                bool hardTurn = Random.value < 0.5f;
-                steer = hardTurn
-                    ? Random.value < 0.5f ? Random.Range(-1f, -0.7f) : Random.Range(0.7f, 1f)
-                    : Random.Range(-1f, 1f);
+            //     bool hardTurn = Random.value < 0.5f;
+            //     steer = hardTurn
+            //         ? Random.value < 0.5f ? Random.Range(-1f, -0.7f) : Random.Range(0.7f, 1f)
+            //         : Random.Range(-1f, 1f);
 
-                throttle = Random.Range(0.3f, 1f);
-                brake = Random.Range(0f, 0.2f);
-            }
-            else if (Random.value < epsilon && Academy.Instance.TotalStepCount > 50000)
-            {
-                // Gentle noise during normal training
-                // Debug.Log("randomsteps taken");
-                steer += Random.Range(-0.1f, 0.1f);
-                throttle += Random.Range(0, 0.2f);
-                throttle = Mathf.Clamp(throttle, 0f, 1f);
-                steer = Mathf.Clamp(steer, -1f, 1f);
+            //     throttle = Random.Range(0.3f, 1f);
+            //     brake = Random.Range(0f, 0.2f);
+            // }
+            // else if (Random.value < epsilon && Academy.Instance.TotalStepCount > 50000)
+            // {
+            //     // Gentle noise during normal training
+            //     // Debug.Log("randomsteps taken");
+            //     steer += Random.Range(-0.1f, 0.1f);
+            //     throttle += Random.Range(0, 0.2f);
+            //     throttle = Mathf.Clamp(throttle, 0f, 1f);
+            //     steer = Mathf.Clamp(steer, -1f, 1f);
 
-            }
+            // }
             // Debug.Log($"[MLAction] Steer: {steer:F2}, Throttle: {throttle:F2}, Brake: {brake:F2}");
 
             // Apply actions to the Arcade Car Physics controller
@@ -335,7 +354,7 @@ public int GetSpawnCheckpointIndex() => spawnCheckpointIndex;
     
     public void OnCheckpointPassed(int checkpointIndex)
     {
-        Debug.Log($"[Agent] Hit checkpoint: {checkpointIndex}");
+        // Debug.Log($"[Agent] Hit checkpoint: {checkpointIndex}");
         
         if (checkpointIndex > maxCheckpointIndexAchieved)
         {
@@ -348,18 +367,33 @@ public int GetSpawnCheckpointIndex() => spawnCheckpointIndex;
         if (checkpointIndex == currentCheckpointIndex)
         {
             AddReward(rewardSystem.GetCheckpointReward());
-            Debug.Log("CP reward added");
+            // Debug.Log("CP reward added");
             currentCheckpointIndex = (currentCheckpointIndex + 1) % trainingManager.GetCheckpointCount();
             
             if (currentCheckpointIndex == 0)
             {
+                lapsCompleted++;
                 AddReward(rewardSystem.GetLapCompletionReward());
+
+                if (isMainAgent)
+                {
+                    float lapTime = Time.time - lapStartTime;
+                    lapTimes.Add(lapTime);
+                    Debug.Log($"[MainAgent] Lap {lapsCompleted} time: {lapTime:F2}s");
+                    lapStartTime = Time.time;
+                    var debugger = GetComponentInChildren<RewardDebugger>();
+                    if (debugger != null) debugger.lapTime = lapTime;
+                }
+
                 EndEpisode();
+                return;
             }
         }
         else
         {
+            Debug.Log("Car going backwards");
             AddReward(rewardSystem.GetWrongCheckpointPenalty());
+            EndEpisode();
         }
     }
     
