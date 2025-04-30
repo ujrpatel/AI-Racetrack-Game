@@ -2,22 +2,58 @@
     "CarAgent": {
         "checkpoints": [
             {
-                "steps": 31680,
-                "file_path": "results\\test40\\CarAgent\\CarAgent-31680.onnx",
-                "reward": null,
-                "creation_time": 1745849945.8378582,
+                "steps": 3999991,
+                "file_path": "results\\test40\\CarAgent\\CarAgent-3999991.onnx",
+                "reward": 1.6097422242164612,
+                "creation_time": 1746053475.287958,
                 "auxillary_file_paths": [
-                    "results\\test40\\CarAgent\\CarAgent-31680.pt"
+                    "results\\test40\\CarAgent\\CarAgent-3999991.pt"
+                ]
+            },
+            {
+                "steps": 4029856,
+                "file_path": "results\\test40\\CarAgent\\CarAgent-4029856.onnx",
+                "reward": null,
+                "creation_time": 1746053602.5306473,
+                "auxillary_file_paths": [
+                    "results\\test40\\CarAgent\\CarAgent-4029856.pt"
+                ]
+            },
+            {
+                "steps": 4031776,
+                "file_path": "results\\test40\\CarAgent\\CarAgent-4031776.onnx",
+                "reward": null,
+                "creation_time": 1746053842.148922,
+                "auxillary_file_paths": [
+                    "results\\test40\\CarAgent\\CarAgent-4031776.pt"
+                ]
+            },
+            {
+                "steps": 4036902,
+                "file_path": "results\\test40\\CarAgent\\CarAgent-4036902.onnx",
+                "reward": 54.22806644439697,
+                "creation_time": 1746053976.9665177,
+                "auxillary_file_paths": [
+                    "results\\test40\\CarAgent\\CarAgent-4036902.pt"
+                ]
+            },
+            {
+                "steps": 4040757,
+                "file_path": "results\\test40\\CarAgent\\CarAgent-4040757.onnx",
+                "reward": 18.088790873686474,
+                "creation_time": 1746054069.381709,
+                "auxillary_file_paths": [
+                    "results\\test40\\CarAgent\\CarAgent-4040757.pt"
                 ]
             }
         ],
         "final_checkpoint": {
-            "steps": 31680,
+            "steps": 4040757,
             "file_path": "results\\test40\\CarAgent.onnx",
-            "reward": null,
-            "creation_time": 1745849945.8378582,
+            "reward": 18.088790873686474,
+            "creation_time": 1746054069.381709,
             "auxillary_file_paths": [
-                "results\\test40\\CarAgent\\CarAgent-31680.pt"
+                "results\\test40\\CarAgent\\CarAgent-4040757.pt"
             ]
         }
     },

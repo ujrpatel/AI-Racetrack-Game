@@ -26,23 +26,26 @@ public class RewardDebugger : MonoBehaviour
 
     private void OnGUI()
     {
+        // Don’t draw any GUI when running in batch/headless
+        if (Application.isBatchMode) return;
+
         var agent = GetComponentInParent<CarAgent>();
         if (agent == null || !agent.isMainAgent) return;
 
         string info = $@"
 <b>REWARDS</b>
-Speed: {speedReward:F3}
-Align: {alignmentReward:F3}
 Progress: {checkpointProgress:F3}
-Projected distance: {projectedDistance:F3}
-Max Projected distance: {MAXprojectedDistance:F3}
-GBL Projected distance: {GlobalprojectedDistance:F3}
-Reverse: {reversePenalty:F3}
-Circling: {circlingPenalty:F3}
-Wall: {wallProximity:F3}
-<b>Lap Time:</b> {lapTime:F3}s
 <b>Total: {total:F3}</b>";
-
         GUI.Label(new Rect(10, 10, 300, 200), info, style);
+
+        Rect btnRect = new Rect(10, 220, 120, 30);
+        if (GUI.Button(btnRect, "Reset All Cars"))
+        {
+            var mgr = FindFirstObjectByType<TrainingManager>();
+            if (mgr != null)
+                mgr.ResetAllCars();
+            else
+                Debug.LogWarning("No TrainingManager found to reset cars.");
+        }
     }
 }

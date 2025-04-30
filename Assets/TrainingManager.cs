@@ -37,24 +37,6 @@ public class TrainingManager : MonoBehaviour
             return;
         }
 
-        // SpawnAgent(0,0);
-
-        // for (int i = 1; i < numberOfAgents; i++)
-        // {
-        //     int randomCheckpoint = Random.Range(1, checkpoints.Count); // Start from 1 to avoid index 0
-        //     SpawnAgent(randomCheckpoint, i);
-        // }
-        // for (int i = 1; i < numberOfAgents; i++)
-        // {
-        //     int randomCheckpoint;
-        //     do
-        //     {
-        //         randomCheckpoint = Random.Range(0, checkpoints.Count); // Could be any checkpoint
-        //     }
-        //     while (randomCheckpoint == 0); // Ensure we don't duplicate the agent at checkpoint 0
-
-        //     SpawnAgent(randomCheckpoint, i);
-        // }
         for (int i = 0; i < numberOfAgents; i++)
         {
             int checkpointIndex = (i == 0) ? 0 : Random.Range(1, checkpoints.Count);
@@ -139,4 +121,15 @@ public class TrainingManager : MonoBehaviour
             }
         }
     }
+
+    // Reset all cars incase of error
+    public void ResetAllCars()
+    {
+        foreach (var agent in carAgents)
+        {
+            agent.EndEpisode();
+        }
+        Debug.Log("[Training Manager] All cars have been reset");
+    }
+
 }

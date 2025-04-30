@@ -1,58 +1,88 @@
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using Unity.MLAgents;
+using System;
+using System.IO;
 
 public class LapTrackingSystem : MonoBehaviour
 {
     [Header("Checkpoint QTY & completion %")]
+
+    // [Header("Record output")]
+    public string runId = "default";
+    // If true, each run will overwrite its CSV; otherwise appends.
+    public bool overwriteEachRun = false;
+
     public SplineTrackGenerator trackGenerator;
     [Range(0.5f,1f)] public float requiredCheckpointCompletion = 1f;
 
     // Per‐vehicle data
     class Data { 
-      public int lap=0; 
+      public int lap; 
       public float lapStart; 
       public int visited; 
       public float distance; 
       public Vector3 lastPos; 
     }
-    Dictionary<int,Data> vehicles = new();
+    private Dictionary<GameObject, Data> vehicles = new Dictionary<GameObject, Data>();
 
     // Records
     [Header("Record output")]
     public bool saveToFile = true;
-    string filePath;
+    private string filePath;
 
     void Awake()
     {
-        filePath = System.IO.Path.Combine(
-            Application.persistentDataPath, "lap_records.csv"
-        );
+        var args = Environment.GetCommandLineArgs();
+        foreach (var a in args)
+        {
+            if (a.StartsWith("--run-id="))
+            {
+                runId = a.Substring("--run-id=".Length);
+                break;
+            }
+        }
+        // 2) Build the Lap Records folder next to your project root (sibling to Assets/)
+        var recordsFolder = Path.Combine(Application.dataPath, "../Lap Records");
+        Directory.CreateDirectory(recordsFolder);
+
+        var fileName = $"{runId}_lap_records.csv";
+        filePath = Path.Combine(recordsFolder, fileName);
+
+        if (overwriteEachRun && File.Exists(filePath))
+        {
+            File.Delete(filePath);
+        }
+
         RaceEvents.OnCheckpointPassed += OnCP;
-        RaceEvents.OnLapStarted      += OnLapStart;
-        RaceEvents.OnLapCompleted    += OnLapComplete;
-        RaceEvents.OnVehicleReset    += OnReset;
+        RaceEvents.OnLapStarted += OnLapStart;
+        RaceEvents.OnLapCompleted += OnLapComplete;
+
     }
 
     void OnDestroy()
     {
         RaceEvents.OnCheckpointPassed -= OnCP;
-        RaceEvents.OnLapStarted      -= OnLapStart;
-        RaceEvents.OnLapCompleted    -= OnLapComplete;
-        RaceEvents.OnVehicleReset    -= OnReset;
+        RaceEvents.OnLapStarted -= OnLapStart;
+        RaceEvents.OnLapCompleted -= OnLapComplete;
+
     }
 
     void OnCP(GameObject v, int idx)
     {
-        int id = v.GetInstanceID();
-        if (!vehicles.ContainsKey(id))
-            vehicles[id] = new Data { lapStart=Time.time, lastPos=v.transform.position };
-        vehicles[id].visited++;
+        if (!vehicles.TryGetValue(v, out var d))
+        {
+            d = new Data { lap = 1, lapStart = Time.time, lastPos = v.transform.position };
+            vehicles[v] = d;
+        }
+        d.visited++;
     }
 
     void OnLapStart(GameObject v, int lapNumber)
     {
-        var d = vehicles[v.GetInstanceID()];
+        if (!vehicles.TryGetValue(v, out var d))
+            vehicles[v] = d = new Data();
         d.lap = lapNumber;
         d.lapStart = Time.time;
         d.visited = 0;
@@ -62,22 +92,24 @@ public class LapTrackingSystem : MonoBehaviour
 
     void OnLapComplete(GameObject v, int lapNumber, float lapTime, float avgSpeed)
     {
-        // Write to CSV
+        if (!vehicles.TryGetValue(v, out var d))
+            return;
+
+        // Save record
         if (saveToFile)
         {
-            bool exists = System.IO.File.Exists(filePath);
-            using var w = new System.IO.StreamWriter(filePath, true);
+            bool exists = File.Exists(filePath);
+            using var w = new StreamWriter(filePath, true);
             if (!exists)
-                w.WriteLine("Vehicle,Lap,Time,AvgSpeed");
-            w.WriteLine($"{v.name},{lapNumber},{lapTime:F3},{avgSpeed:F2}");
+                w.WriteLine("Vehicle,Lap,Time,AvgSpeed,Distance");
+            w.WriteLine($"{v.name},{lapNumber},{lapTime:F3},{avgSpeed:F2},{d.distance:F2}");
         }
         Debug.Log($"[LapTracking] {v.name} lap{lapNumber}={lapTime:F2}s @ {avgSpeed:F2}m/s");
-    }
 
-    void OnReset(GameObject v)
-    {
-        // Treat a reset like a new lap start
-        RaceEvents.LapStarted(v, vehicles[v.GetInstanceID()].lap + 1);
+        // TensorBoard stats
+        var stats = Academy.Instance.StatsRecorder;
+        stats.Add("lap_time", lapTime);
+        stats.Add("lap_avg_speed", avgSpeed);
     }
 
     void Update()
@@ -85,11 +117,12 @@ public class LapTrackingSystem : MonoBehaviour
         // Track distance each frame
         foreach (var kv in vehicles)
         {
-            var v = EditorUtility.InstanceIDToObject(kv.Key) as GameObject;
-            if (v == null) continue;
+            var agent = kv.Key;
             var d = kv.Value;
-            d.distance += Vector3.Distance(v.transform.position, d.lastPos);
-            d.lastPos = v.transform.position;
+            if (agent == null || agent.gameObject == null) continue;
+            var pos = agent.transform.position;
+            d.distance += Vector3.Distance(pos, d.lastPos);
+            d.lastPos = pos;
         }
     }
 }
