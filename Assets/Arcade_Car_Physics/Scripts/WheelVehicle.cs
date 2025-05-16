@@ -327,7 +327,7 @@ namespace VehicleBehaviour {
                 // Turn
                 steering = turnInputCurve.Evaluate(GetInput(turnInput)) * steerAngle;
                 // SteerAngle = steering; 
-                Debug.Log($"[WHEEL VEHCILE] steering {steering}");
+                // Debug.Log($"[WHEEL VEHCILE] steering {steering}");
                 // Dirft
                 drift = GetInput(driftInput) > 0 && rb.linearVelocity.sqrMagnitude > 100;
                 // Jump
@@ -356,13 +356,13 @@ namespace VehicleBehaviour {
                 if (linearSteeringOverride)
                 {
                     wheel.steerAngle = SteerAngle * steering;
-                    Debug.Log($"[WheelVehicle] Directly setting wheel.steerAngle = {SteerAngle}");
+                    // Debug.Log($"[WheelVehicle] Directly setting wheel.steerAngle = {SteerAngle}");
                 }
                 else
                 {
                     float interpolated = Mathf.Lerp(wheel.steerAngle, steering, steerSpeed);
                     wheel.steerAngle = interpolated;
-                    Debug.Log($"[WheelVehicle] Lerp to wheel.steerAngle = {interpolated}");
+                    // Debug.Log($"[WheelVehicle] Lerp to wheel.steerAngle = {interpolated}");
                 }
             }
 
@@ -469,6 +469,32 @@ namespace VehicleBehaviour {
         {
             handbrake = h;
         }
+
+
+        // Check if the car is on the racetrack
+        public bool AllWheelsOnRoad()
+        {
+            // 'wheels' is the private WheelCollider[] filled in Start()
+            foreach (var wheel in wheels)
+            {
+                WheelHit hit;
+                // If this wheel isn’t touching anything, or touching something
+                // that isn’t tagged "Road", fail.
+                if (wheel.GetGroundHit(out hit))
+                {
+                    if (!hit.collider.CompareTag("Road"))
+                        return false;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+
+
 
         // MULTIOSCONTROLS is another package I'm working on ignore it I don't know if it will get a release.
 #if MULTIOSCONTROLS

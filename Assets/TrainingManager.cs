@@ -9,7 +9,13 @@ public class TrainingManager : MonoBehaviour
     public GameObject carPrefab;
 
     private List<Transform> checkpoints;
-    private GameObject carInstance;
+    private List<GameObject> carInstances = new List<GameObject>();
+    public List<CarAgent> carAgents = new List<CarAgent>();
+    // private GameObject carInstance;
+
+    [Header("Agent Settings")]
+    [Range(1, 5)] public int numberOfAgents = 5; //  Number of agents to spawn
+    public float spawnSpacing = 2.0f; //  Offset between spawned cars
 
     void Awake()
     {
@@ -25,35 +31,66 @@ public class TrainingManager : MonoBehaviour
         }
 
         checkpoints = trackGenerator.GetCheckpoints();
-        SpawnAgent(0);
-    }
-
-    void SpawnAgent(int checkpointIndex) {
-        if (carInstance != null) {
-            Destroy(carInstance);
-        }
-
-        Transform spawnPoint = GetCheckpoint(checkpointIndex);
-        if (spawnPoint == null) {
-            Debug.LogError("TrainingManager: Invalid spawn checkpoint!");
+         if (checkpoints == null || checkpoints.Count == 0)
+        {
+            Debug.LogError("[Training Manager]: No checkpoints found!");
             return;
         }
 
-        // Spawn the car 5 units before the checkpoint to trigger the lap timer
-        Vector3 spawnPosition = spawnPoint.position - (spawnPoint.forward * 5f) + (Vector3.up * 0.5f);
-        Quaternion spawnRotation = spawnPoint.rotation;
-        Debug.Log($"[TrainingManager] Spawning agent at position: {spawnPosition}");
-
-        carInstance = Instantiate(carPrefab, spawnPosition, spawnRotation);
-        FollowCamera followCam = FindFirstObjectByType<FollowCamera>();
-        if (followCam != null)
+        for (int i = 0; i < numberOfAgents; i++)
         {
-            followCam.target = carInstance.transform;
+            int checkpointIndex = (i == 0) ? 0 : Random.Range(1, checkpoints.Count);
+            SpawnAgent(checkpointIndex);
         }
 
-        CarAgent carAgent = carInstance.GetComponent<CarAgent>();
+    }
+
+    void SpawnAgent(int checkpointIndex) {
+
+        Transform spawnPoint = GetCheckpoint(checkpointIndex);
+        if (spawnPoint == null) {
+            Debug.LogError($"[TrainingManager]: Invalid checkpoint index: {checkpointIndex}");
+            return;
+        }
+
+        // Small random rotation 5 degrees, to provide randomisation and generalisation
+        float randomYaw = Random.Range(-5f, 5f);
+        Quaternion spawnRotation = Quaternion.Euler(0f, spawnPoint.rotation.eulerAngles.y + randomYaw, 0f);
+
+        // Small variations lateraly and linearlly across the checkpoints, for randomisation. different senarios
+        Vector3 lateralJitter = spawnPoint.right * Random.Range(-0.5f, 0.5f);
+        Vector3 forwardJitter = spawnPoint.forward * Random.Range(-1f, 1f);
+
+        Vector3 spawnPosition = spawnPoint.position - (spawnPoint.forward * 3f) + lateralJitter + forwardJitter + (Vector3.up * 0.5f);
+        
+        // Debug.Log($"[TrainingManager] Spawning agent at position: {spawnPosition}");
+
+        GameObject car = Instantiate(carPrefab, spawnPosition, spawnRotation);
+        CarAgent carAgent = car.GetComponent<CarAgent>();
+        carInstances.Add(car);
+        
+        // Attach the camera only to the first agent
+        if (carInstances.Count == 1)
+        {
+            FollowCamera cam = FindFirstObjectByType<FollowCamera>();
+            if (cam != null)
+            {
+                //traking the main car with camera and lapping system
+                carAgent.isMainAgent = true;
+                cam.target = car.transform;
+            }
+            else
+            {
+                carAgent.isMainAgent = false;
+            }
+        }
+
         if (carAgent != null) {
+
+            carAgent.SetSpawnCheckpointIndex(checkpointIndex);
             carAgent.Initialize();
+            carAgent.trainingManager = this; // exposed reference
+            carAgents.Add(carAgent);
         }
     }
 
@@ -76,11 +113,23 @@ public class TrainingManager : MonoBehaviour
     {
         foreach (Transform checkpoint in checkpoints)
         {
-            CheckpointTrigger trigger = checkpoint.GetComponent<CheckpointTrigger>();
-            if (trigger != null)
+            Checkpoint cp = checkpoint.GetComponent<Checkpoint>();
+            if (cp != null)
             {
-                trigger.ResetTrigger();
+                Debug.Log("SHOuldnt be triggered");// cp.ResetCheckpoint();
+
             }
         }
     }
+
+    // Reset all cars incase of error
+    public void ResetAllCars()
+    {
+        foreach (var agent in carAgents)
+        {
+            agent.EndEpisode();
+        }
+        Debug.Log("[Training Manager] All cars have been reset");
+    }
+
 }

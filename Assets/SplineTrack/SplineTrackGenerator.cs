@@ -45,6 +45,7 @@ public class SplineTrackGenerator : MonoBehaviour
     private bool isGenerating = false;
     private void OnEnable()
     {
+        if (!Application.isPlaying) return;
         // Ensure tags exist
         CreateRequiredTags();
         
@@ -100,6 +101,7 @@ public class SplineTrackGenerator : MonoBehaviour
         }
     }
 #endif
+
 
     private void OnValidate()
     {
@@ -711,10 +713,10 @@ public class SplineTrackGenerator : MonoBehaviour
             checkpointObj.name = $"Checkpoint_{i}";
             
             // Add checkpoint identifier component
-            CheckpointIdentifier identifier = checkpointObj.AddComponent<CheckpointIdentifier>();
-            identifier.CheckpointIndex = i;
+            Checkpoint checkpoint = checkpointObj.AddComponent<Checkpoint>();
+            checkpoint.SetIndex(i);
 
-            checkpointObj.AddComponent<CheckpointTrigger>();
+            
             
             // Special handling for start/finish line (checkpoint 0)
             if (i == 0)
