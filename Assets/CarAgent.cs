@@ -80,8 +80,9 @@ public class CarAgent : Agent
         base.Initialize();
         VehicleController = GetComponent<WheelVehicle>();
         CarController = GetComponent<CarController>();
+        // dynamically selects the control mode for all 3 modes, if MLA is enablled then the use liner steering overide is called
 
-        if (VehicleController  == null || CarController == null)
+        if (VehicleController == null || CarController == null)
         {
             Debug.LogError("[CarAgent] Missing VehicleController or CarController component!");
             return;
@@ -144,17 +145,18 @@ public class CarAgent : Agent
             VehicleController.ResetPos();
     }
 
+    // first spawn is handled in the training manager, in game they are handlled here
     public void RespawnAtRandomCheckpoint()
     {
         int total = trainingManager.GetCheckpointCount();
         int newIndex;
 
-        if (spawnCheckpointIndex != 0) 
+        if (spawnCheckpointIndex != 0)
         {
             newIndex = spawnCheckpointIndex;
-        } 
-        else 
-        {   
+        }
+        else
+        {
             newIndex = Random.Range(1, total);
         }
 

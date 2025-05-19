@@ -5421,18 +5421,26 @@ MonoBehaviour:
   agentParameters:
     maxStep: 0
   hasUpgradedFromAgentParameters: 1
-  MaxStep: 15000
+  MaxStep: 5000
   trainingManager: {fileID: 0}
   isMainAgent: 0
+  currentLapTime: 0
+  lastLapTime: 0
+  bestLapTime: 3.4028235e+38
+  lapsCompleted: 0
   useRayPerceptionSensor: 0
   raycastDistance: 10
   raycastLayer:
     serializedVersion: 2
     m_Bits: 192
   logMetrics: 1
-  lapsCompleted: 0
-  liveLapTime: 0
-  controlMode: 0
+  maxTiltAngle: 60
+  offTrackRayDistance: 1
+  roadLayer:
+    serializedVersion: 2
+    m_Bits: 0
+  groundCheckDelay: 1
+  controlMode: 2
 --- !u!114 &7267932107472331677
 MonoBehaviour:
   m_ObjectHideFlags: 0

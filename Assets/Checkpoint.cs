@@ -20,6 +20,7 @@ public class Checkpoint : MonoBehaviour
         }
     }
 
+    // checks to see if a object with tag = player has collided with the trigger
     private void OnTriggerEnter(Collider other)
     {
         if (!other.CompareTag("Player")) return;

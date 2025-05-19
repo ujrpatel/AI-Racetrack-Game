@@ -122,19 +122,19 @@ public class SplineTrackGenerator : MonoBehaviour
         // Basic validation
         if (splineContainer == null)
         {
-            Debug.LogError("❌ ERROR: No SplineContainer assigned! Assign one in the Inspector.");
+            Debug.LogError("ERROR: No SplineContainer assigned! Assign one in the Inspector.");
             return;
         }
 
         if (splineContainer.Splines == null || splineContainer.Splines.Count == 0)
         {
-            Debug.LogError("❌ ERROR: The assigned SplineContainer has no splines!");
+            Debug.LogError("ERROR: The assigned SplineContainer has no splines!");
             return;
         }
 
         if (splineIndex >= splineContainer.Splines.Count)
         {
-            Debug.LogError($"❌ ERROR: Spline index {splineIndex} is out of range (max: {splineContainer.Splines.Count - 1})");
+            Debug.LogError($"ERROR: Spline index {splineIndex} is out of range (max: {splineContainer.Splines.Count - 1})");
             splineIndex = 0;
         }
 

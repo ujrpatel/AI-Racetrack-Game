@@ -26,7 +26,7 @@ public class RewardDebugger : MonoBehaviour
 
     private void OnGUI()
     {
-        // Don’t draw any GUI when running in batch/headless
+        // don’t draw any GUI when running in batch/headless
         if (Application.isBatchMode) return;
 
         var agent = GetComponentInParent<CarAgent>();

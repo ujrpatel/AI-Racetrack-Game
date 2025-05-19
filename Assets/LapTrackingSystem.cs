@@ -43,7 +43,7 @@ public class LapTrackingSystem : MonoBehaviour
                 break;
             }
         }
-        // 2) Build the Lap Records folder next to your project root (sibling to Assets/)
+        // build the Lap Records folder next to project root (sibling to Assets/)
         var recordsFolder = Path.Combine(Application.dataPath, "../Lap Records");
         Directory.CreateDirectory(recordsFolder);
 
@@ -79,6 +79,7 @@ public class LapTrackingSystem : MonoBehaviour
         d.visited++;
     }
 
+    // zeroing out at the start of every lap
     void OnLapStart(GameObject v, int lapNumber)
     {
         if (!vehicles.TryGetValue(v, out var d))

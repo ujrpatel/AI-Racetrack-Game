@@ -61,13 +61,14 @@ public class RewardSystem
         Reset();
     }
 
+    //reset car logic, handles "zeroing" out for next episode
     public void Reset()
     {
         Transform nextCheckpoint = trainingManager.GetCheckpoint(agent.GetCurrentCheckpointIndex());
         lastDistanceToCheckpoint = nextCheckpoint != null
             ? Vector3.Distance(agent.transform.position, nextCheckpoint.position)
             : float.MaxValue;
-        
+
         lastPosition = agent.transform.position;
         lastCheckpointProgress = lastDistanceToCheckpoint;
         lastProgressCheckTime = Time.time;

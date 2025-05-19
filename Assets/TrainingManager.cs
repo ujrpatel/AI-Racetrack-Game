@@ -19,7 +19,7 @@ public class TrainingManager : MonoBehaviour
 
     void Awake()
     {
-
+        // checks to see if spline and checkpoints have been generated correctly
         if (trackGenerator == null)
         {
             trackGenerator = FindFirstObjectByType<SplineTrackGenerator>();

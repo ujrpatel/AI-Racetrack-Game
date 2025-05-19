@@ -310,14 +310,11 @@ namespace VehicleBehaviour {
         void FixedUpdate () {
             // Mesure current speed
             speed = transform.InverseTransformDirection(rb.linearVelocity).z * 3.6f;
-            // Debug.Log($"[WHEEL VEHCILE] ML Steering {steering}");
+
             // Get all the inputs!
             if (isPlayer) {
                 // Accelerate & brake
-                // if (throttleInput != "" && throttleInput != null)
-                // {
-                //     throttle = GetInput(throttleInput) - GetInput(brakeInput);
-                // }
+
                 if (!string.IsNullOrEmpty(throttleInput))
                 {
                     throttle = GetInput(throttleInput) - GetInput(brakeInput);
@@ -326,8 +323,7 @@ namespace VehicleBehaviour {
                 boosting = (GetInput(boostInput) > 0.5f);
                 // Turn
                 steering = turnInputCurve.Evaluate(GetInput(turnInput)) * steerAngle;
-                // SteerAngle = steering; 
-                // Debug.Log($"[WHEEL VEHCILE] steering {steering}");
+    
                 // Dirft
                 drift = GetInput(driftInput) > 0 && rb.linearVelocity.sqrMagnitude > 100;
                 // Jump
@@ -338,19 +334,9 @@ namespace VehicleBehaviour {
                 // Debug.Log($"[WHEEL VEHCILE] ML Steering {steering}");
             }
 
-            float targetSteer = SteerAngle; // Get the most recent value set by SetSteering()
+
             // Direction
-            // foreach (WheelCollider wheel in turnWheel)
-            // {
-            //     wheel.steerAngle = Mathf.Lerp(wheel.steerAngle, steering, steerSpeed);
-            //     Debug.Log($"[WHEEL VEHCILE] ML Steering {steering}");
-            //     Debug.Log($"[WHEEL VEHCILE] ML Steering ANGLE {wheel.steerAngle}");
-            //     Debug.Log($"[WHEEL VEHCILE] ML Steering SPEED{steerSpeed}");
-            //     // if (linearSteeringOverride)
-            //     //     wheel.steerAngle = targetSteer; // Instantly apply full angle (good for ML)
-            //     // else
-            //     //     wheel.steerAngle = Mathf.Lerp(wheel.steerAngle, targetSteer, steerSpeed); // Apply gradually (good for humans)
-            // }
+
             foreach (WheelCollider wheel in turnWheel)
             {
                 if (linearSteeringOverride)

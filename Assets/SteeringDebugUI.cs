@@ -17,7 +17,7 @@ public class SteeringDebugUI : MonoBehaviour
         float steer = Mathf.Clamp(vehicle.Steering, -1f, 1f);
         float throttle = Mathf.Clamp(vehicle.Throttle, -1f, 1f);
 
-        // STEERING BAR (horizontal top-center)
+        // steering  BAR (horizontal top-center)
         float barWidth = 200f;
         float barHeight = 20f;
         float barX = (Screen.width - barWidth) / 2f;
@@ -28,7 +28,7 @@ public class SteeringDebugUI : MonoBehaviour
         float steerX = barX + steerNormalized * barWidth - 5f;
         GUI.Box(new Rect(steerX, barY, 10f, barHeight), "•");
 
-        // THROTTLE BAR (vertical top-right)
+        // throttle BAR (vertical top-right)
         float tBarHeight = 200f;
         float tBarWidth = 20f;
         float tBarX = Screen.width - tBarWidth - 10f;
