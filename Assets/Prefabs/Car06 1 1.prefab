@@ -5421,7 +5421,7 @@ MonoBehaviour:
   agentParameters:
     maxStep: 0
   hasUpgradedFromAgentParameters: 1
-  MaxStep: 5000
+  MaxStep: 10000
   trainingManager: {fileID: 0}
   isMainAgent: 0
   currentLapTime: 0
@@ -5440,7 +5440,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 0
   groundCheckDelay: 1
-  controlMode: 2
+  controlMode: 0
 --- !u!114 &7267932107472331677
 MonoBehaviour:
   m_ObjectHideFlags: 0

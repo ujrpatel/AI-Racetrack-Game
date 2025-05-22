@@ -37,9 +37,15 @@ public class RewardSystem
     private const int wallRayCount = 6;
     private float globalMaxTrackProgress = 0f;
 
-
+    // New speed configuration: set based on actual vehicle tests
+    [Tooltip("Measured maximum speed of the vehicle (m/s)")]
+    public float observedMaxSpeed = 1f;
+    [Tooltip("Fraction of max speed to use as optimal cruise speed")]
+    [Range(0.1f, 1f)]
+    public float optimalSpeedMultiplier = 0.7f;
+    
     // Phase 2 Cofiguration
-    public float timePenaltyFactor  = 0.001f;
+    public float timePenaltyFactor = 0.001f;
     // How harshly to punish braking on a straight
     public float brakePenaltyFactor = 0.005f;
     // Only penalize brakes when forward speed > this
@@ -78,6 +84,7 @@ public class RewardSystem
         isCircling = false;
         timeStationary = 0f;
         lastCheckpointIndex = -1;
+        observedMaxSpeed = 1f;
     }
 
     public float CalculateReward()
@@ -86,6 +93,12 @@ public class RewardSystem
         Rigidbody rb = agent.GetComponent<Rigidbody>();
         Vector3 velocity = rb.linearVelocity;
         float speed = velocity.magnitude;
+
+                // Update observed max speed dynamically
+        observedMaxSpeed = Mathf.Max(observedMaxSpeed, speed);
+
+        // Determine optimal cruise target at each tick
+        float optimalSpeed = optimalSpeedMultiplier * observedMaxSpeed;
 
         // Phase 2: lap 0 = phase 1 | lap 1 = 0.5 | lap 2+ = 1.0 full weight
         float phaseWeight = 0f;
@@ -119,10 +132,13 @@ public class RewardSystem
         }
         else
         {
-            float optimalSpeed = 7f; // Based on ~70% of typical max
+            // float optimalSpeed = optimalSpeedMultiplier * measuredMaxSpeed;
+            // float optimalSpeed = 7f; // Based on ~70% of typical max
             float ratio = Mathf.Clamp01(speed / optimalSpeed);
             float speedRwd = ratio * (2.0f - ratio) * speedRewardFactor * Time.fixedDeltaTime;
+            float forwardBonus = Mathf.Max(0f, forwardSpeed) * 0.001f * Time.fixedDeltaTime;
             reward += speedRwd;
+            reward += forwardBonus;
             if (debugger != null) debugger.speedReward = speedRwd;
             // Debug.Log($"OS: {speedRwd}");
         }

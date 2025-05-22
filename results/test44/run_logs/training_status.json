@@ -1,0 +1,65 @@
+{
+    "CarAgent": {
+        "checkpoints": [
+            {
+                "steps": 3999991,
+                "file_path": "results\\test44\\CarAgent\\CarAgent-3999991.onnx",
+                "reward": 12.239123731851578,
+                "creation_time": 1747865110.4648716,
+                "auxillary_file_paths": [
+                    "results\\test44\\CarAgent\\CarAgent-3999991.pt"
+                ]
+            },
+            {
+                "steps": 4499972,
+                "file_path": "results\\test44\\CarAgent\\CarAgent-4499972.onnx",
+                "reward": 120.47699078544974,
+                "creation_time": 1747865684.6884546,
+                "auxillary_file_paths": [
+                    "results\\test44\\CarAgent\\CarAgent-4499972.pt"
+                ]
+            },
+            {
+                "steps": 4999966,
+                "file_path": "results\\test44\\CarAgent\\CarAgent-4999966.onnx",
+                "reward": 89.42316487431526,
+                "creation_time": 1747866324.4350164,
+                "auxillary_file_paths": [
+                    "results\\test44\\CarAgent\\CarAgent-4999966.pt"
+                ]
+            },
+            {
+                "steps": 5499969,
+                "file_path": "results\\test44\\CarAgent\\CarAgent-5499969.onnx",
+                "reward": 19.657583567500115,
+                "creation_time": 1747867038.4352186,
+                "auxillary_file_paths": [
+                    "results\\test44\\CarAgent\\CarAgent-5499969.pt"
+                ]
+            },
+            {
+                "steps": 5521875,
+                "file_path": "results\\test44\\CarAgent\\CarAgent-5521875.onnx",
+                "reward": 50.72833625280431,
+                "creation_time": 1747867129.9748313,
+                "auxillary_file_paths": [
+                    "results\\test44\\CarAgent\\CarAgent-5521875.pt"
+                ]
+            }
+        ],
+        "final_checkpoint": {
+            "steps": 5521875,
+            "file_path": "results\\test44\\CarAgent.onnx",
+            "reward": 50.72833625280431,
+            "creation_time": 1747867129.9748313,
+            "auxillary_file_paths": [
+                "results\\test44\\CarAgent\\CarAgent-5521875.pt"
+            ]
+        }
+    },
+    "metadata": {
+        "stats_format_version": "0.3.0",
+        "mlagents_version": "1.1.0",
+        "torch_version": "2.2.2+cpu"
+    }
+}

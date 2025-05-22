@@ -1,0 +1,56 @@
+{
+    "CarAgent": {
+        "checkpoints": [
+            {
+                "steps": 499962,
+                "file_path": "results\\test43\\CarAgent\\CarAgent-499962.onnx",
+                "reward": 21.20402631163597,
+                "creation_time": 1747857676.541871,
+                "auxillary_file_paths": [
+                    "results\\test43\\CarAgent\\CarAgent-499962.pt"
+                ]
+            },
+            {
+                "steps": 999962,
+                "file_path": "results\\test43\\CarAgent\\CarAgent-999962.onnx",
+                "reward": null,
+                "creation_time": 1747858150.6730754,
+                "auxillary_file_paths": [
+                    "results\\test43\\CarAgent\\CarAgent-999962.pt"
+                ]
+            },
+            {
+                "steps": 1368521,
+                "file_path": "results\\test43\\CarAgent\\CarAgent-1368521.onnx",
+                "reward": null,
+                "creation_time": 1747858765.7156615,
+                "auxillary_file_paths": [
+                    "results\\test43\\CarAgent\\CarAgent-1368521.pt"
+                ]
+            },
+            {
+                "steps": 1497742,
+                "file_path": "results\\test43\\CarAgent\\CarAgent-1497742.onnx",
+                "reward": 17.427681997418404,
+                "creation_time": 1747859626.5669005,
+                "auxillary_file_paths": [
+                    "results\\test43\\CarAgent\\CarAgent-1497742.pt"
+                ]
+            }
+        ],
+        "final_checkpoint": {
+            "steps": 1497742,
+            "file_path": "results\\test43\\CarAgent.onnx",
+            "reward": 17.427681997418404,
+            "creation_time": 1747859626.5669005,
+            "auxillary_file_paths": [
+                "results\\test43\\CarAgent\\CarAgent-1497742.pt"
+            ]
+        }
+    },
+    "metadata": {
+        "stats_format_version": "0.3.0",
+        "mlagents_version": "1.1.0",
+        "torch_version": "2.2.2+cpu"
+    }
+}
